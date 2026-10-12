@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SMED · Medición de setup</title><style>
+/* Layout: barra superior con pestañas + asistente de 4 etapas (datos y kit → procedimiento → cambio en curso → resultado). Pensado para tablet junto a la troqueladora. */
+:root{
+  --bg:#EEF1F4; --surface:#FFFFFF; --surface2:#F5F7F9; --line:#D5DCE3; --fg:#17212E; --muted:#5B6878;
+  --navy:#16263D; --accent:#1F5F9E; --accent-soft:#E2ECF6; --run:#C77A00; --run-soft:#FBEFD9;
+  --ok:#2E7D4F; --ok-soft:#E1F1E7; --warn:#B4531A; --warn-soft:#F8E6DA; --ext:#5B7FA6;
+  --sans:'IBM Plex Sans', 'Segoe UI', Arial, sans-serif; --mono:'IBM Plex Mono', Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10161F; --surface:#18212D; --surface2:#1E2936; --line:#2C3A4A; --fg:#E6ECF2; --muted:#9AA8B8;
+  --navy:#0B1320; --accent:#6FA8E0; --accent-soft:#1D3047; --run:#F0AE3C; --run-soft:#3A2C12;
+  --ok:#5FC08A; --ok-soft:#173326; --warn:#F08A50; --warn-soft:#3B2216; --ext:#8FAFD2; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10161F; --surface:#18212D; --surface2:#1E2936; --line:#2C3A4A; --fg:#E6ECF2; --muted:#9AA8B8;
+  --navy:#0B1320; --accent:#6FA8E0; --accent-soft:#1D3047; --run:#F0AE3C; --run-soft:#3A2C12;
+  --ok:#5FC08A; --ok-soft:#173326; --warn:#F08A50; --warn-soft:#3B2216; --ext:#8FAFD2; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.45}
+body{margin:0}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--navy);color:#F2F5F8;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center}
+.brand{display:flex;flex-direction:column}
+.brand b{font-size:16px;letter-spacing:.2px}
+.brand span{font-size:12px;color:#AFC0D3}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{background:transparent;border:1px solid transparent;color:#C9D6E4;padding:7px 12px;border-radius:8px;font:inherit;font-weight:500;cursor:pointer}
+.tab[aria-selected="true"]{background:#F2F5F8;color:#16263D}
+.tab:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.metaTag{margin-left:auto;font-size:12px;color:#AFC0D3}
+.metaTag b{color:#fff;font-family:var(--mono)}
+main{max-width:1180px;margin:0 auto;padding-block:18px 40px;padding-inline:16px}
+h1{font-size:22px;margin:0 0 4px;text-wrap:balance}
+h2{font-size:17px;margin:0 0 10px}
+.sub{color:var(--muted);margin:0 0 16px;max-width:70ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:820px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+input,select{font:inherit;color:var(--fg);background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%}
+.btn{font:inherit;font-weight:600;border-radius:10px;border:1px solid var(--line);background:var(--surface2);color:var(--fg);padding:10px 16px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.run{background:var(--run);border-color:var(--run);color:#1B1305}
+.btn.okb{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.warnb{background:var(--warn);border-color:var(--warn);color:#fff}
+.btn.big{font-size:20px;padding:18px 26px;border-radius:14px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.stepper{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px;padding:0;list-style:none}
+.stepper li{flex:1 1 150px;padding:8px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-size:13px;color:var(--muted)}
+.stepper li b{display:block;color:var(--fg);font-size:14px}
+.stepper li.on{border-color:var(--accent);background:var(--accent-soft)}
+.stepper li.done{color:var(--ok)}
+.group{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+.group h3{font-size:14px;margin:0 0 8px;display:flex;gap:8px;align-items:center}
+.pill{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+.p-ext{background:var(--accent-soft);color:var(--accent)}
+.p-int{background:var(--run-soft);color:var(--run)}
+.p-ok{background:var(--ok-soft);color:var(--ok)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-muted{background:var(--surface2);color:var(--muted);border:1px solid var(--line)}
+.check{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border-radius:8px;cursor:pointer;border:1px solid transparent}
+.check:hover{background:var(--surface2)}
+.check input{width:22px;height:22px;flex:none;margin-top:1px;accent-color:var(--ok)}
+.check.ticked span{color:var(--muted);text-decoration:line-through}
+.timerBox{display:flex;gap:18px;flex-wrap:wrap;align-items:center;padding:12px 14px;border-radius:10px;background:var(--surface2);border:1px solid var(--line)}
+.clock{font-family:var(--mono);font-size:30px;font-weight:600;font-variant-numeric:tabular-nums}
+.clock.sm{font-size:20px}
+.lbl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.steps li{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface)}
+.steps li .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;background:var(--surface2);border:1px solid var(--line)}
+.steps li.cur{border-color:var(--run);background:var(--run-soft)}
+.steps li.cur .n{background:var(--run);color:#1B1305;border-color:var(--run)}
+.steps li.done .n{background:var(--ok);color:#fff;border-color:var(--ok)}
+.steps li .t{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;color:var(--muted);text-align:right}
+.steps li .d{font-size:12.5px;color:var(--muted)}
+.run{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px}
+@media (max-width:900px){.run{grid-template-columns:minmax(0,1fr)}}
+.now{border:2px solid var(--run);border-radius:14px;padding:18px;background:var(--surface);display:flex;flex-direction:column;gap:12px}
+.now h2{font-size:24px;margin:0}
+.bars{display:flex;gap:6px;align-items:center}
+.bar{flex:1;height:10px;border-radius:6px;background:var(--surface2);overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:var(--run)}
+.bar.over i{background:var(--warn)}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.kpi .v{font-family:var(--mono);font-size:26px;font-weight:600;font-variant-numeric:tabular-nums}
+.kpi .k{font-size:12.5px;color:var(--muted)}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{background:var(--surface2);font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+tr.hl td{background:var(--warn-soft)}
+.note{font-size:12.5px;color:var(--muted)}
+.banner{border-radius:10px;padding:12px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.banner.ok{background:var(--ok-soft);color:var(--ok)}
+.banner.warn{background:var(--warn-soft);color:var(--warn)}
+.banner .big{font-family:var(--mono);font-size:30px;font-weight:600}
+.confirm{border:1px solid var(--warn);background:var(--warn-soft);border-radius:10px;padding:10px 12px}
+svg text{fill:var(--muted);font-family:var(--sans);font-size:11px}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:10px;font-weight:500;z-index:9}
+@media (prefers-reduced-motion:no-preference){.now{transition:border-color .2s}}
+
+[hidden]{display:none!important}button,input,select,textarea{min-height:44px}textarea{font:inherit;width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface2);color:var(--fg)}
+.plan-item{display:flex;gap:6px;align-items:center;margin:8px 0}.plan-item input{flex:1;min-width:0}.plan-item .btn{padding:8px 12px}.empty{padding:24px;color:var(--muted);text-align:center}.status{margin:12px 0}.actions{display:flex;gap:10px;flex-wrap:wrap}.now .primary{min-height:80px;width:100%}.timeline{max-height:420px;overflow:auto}.timeline .check{cursor:default}.detail{max-width:950px;width:calc(100% - 24px);max-height:90vh;overflow:auto;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:14px;padding:20px}dialog::backdrop{background:#0008}.chart-row{display:grid;grid-template-columns:minmax(120px,1fr) 2fr 90px;gap:10px;align-items:center;margin:14px 0}.chart-row .bar{height:20px}.chart-row .bar i{background:var(--accent)}.chart-row span{font-size:13px}.hint{padding:12px;background:var(--accent-soft);border-radius:8px;margin-bottom:16px}.filter{flex:1;min-width:140px}.timerBox .clock{font-size:38px}.btn.danger{color:var(--warn)}@media(max-width:600px){main{padding-inline:10px}.plan-item{flex-wrap:wrap}.plan-item input{flex-basis:100%}.chart-row{grid-template-columns:1fr 1fr 65px}.now h2{font-size:22px}.metaTag{display:none}}
+
+.login-wrap{max-width:460px;margin:48px auto;padding:0 16px}.login-wrap .card{padding:26px}.login-wrap h1{margin-bottom:8px}.login-wrap label.f{margin:16px 0}.login-wrap .primary{width:100%;margin-top:8px}.account{display:flex;gap:12px;align-items:center;margin-left:auto;color:#F2F5F8;font-size:13px}.account .btn{padding:7px 12px}.login-error{color:var(--warn);min-height:22px}.password-row{display:flex;gap:8px}.password-row input{min-width:0;flex:1}.login-wrap .note{margin-top:16px}
+
+/* Etapas y valores destacados. */
+.measurement-data .grid3{grid-template-columns:repeat(2,minmax(0,1fr))}
+:root{--blue:#1d4ed8;--amber:#b45309;--green:#047857;--purple:#6d28d9;--blue-bg:#eaf2ff;--amber-bg:#fff4dc;--green-bg:#e3f7ee}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--blue:#93c5fd;--amber:#ffd166;--green:#6ee7b7;--purple:#c4b5fd;--blue-bg:#172e50;--amber-bg:#3b2c16;--green-bg:#14392f}}
+:root[data-theme="dark"]{--blue:#93c5fd;--amber:#ffd166;--green:#6ee7b7;--purple:#c4b5fd;--blue-bg:#172e50;--amber-bg:#3b2c16;--green-bg:#14392f}
+html,body{font-size:17px}main{max-width:1280px;padding-top:26px}h1{font-size:32px;font-weight:750;margin-bottom:22px}h2{font-size:23px;font-weight:700}.brand b{font-size:21px}.brand span{font-size:14px}.top{padding:14px 22px}.tab{font-size:17px;font-weight:650;padding:11px 16px}.card{padding:22px;border-radius:16px;box-shadow:0 5px 20px #0000000d}.btn{font-size:17px;min-height:50px;padding:12px 18px;border-width:2px}.btn.primary{background:#1d4ed8;border-color:#1d4ed8;color:#fff;font-weight:750}.btn.primary:hover{background:#1e40af;border-color:#1e40af}.btn.big{font-size:24px}.btn:focus-visible,.tab:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:4px}
+.stepper{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:28px}.stepper li{position:relative;display:flex;align-items:center;gap:14px;min-height:132px;padding:24px 18px 30px;border:2px solid var(--stage-color);border-radius:16px;background:var(--stage-bg);color:var(--stage-color);font-size:16px;opacity:.8}.stepper li[data-s="1"]{--stage-color:var(--blue);--stage-bg:var(--blue-bg)}.stepper li[data-s="2"]{--stage-color:var(--amber);--stage-bg:var(--amber-bg)}.stepper li[data-s="3"]{--stage-color:var(--green);--stage-bg:var(--green-bg)}.stepper li b{font-size:23px;line-height:1.2;color:var(--fg);margin-bottom:7px}.stage-number{display:grid;place-items:center;flex:none;width:48px;height:48px;font:800 26px var(--mono);background:var(--stage-color);color:var(--stage-bg);border-radius:14px}.stage-content{min-width:0}.stepper li.on{opacity:1;border-width:3px;box-shadow:0 0 0 4px color-mix(in srgb,var(--stage-color) 15%,transparent)}.stepper li.on::after,.stepper li.done::after{position:absolute;bottom:8px;left:82px;font-size:11px;letter-spacing:.8px;font-weight:800}.stepper li.on::after{content:'ETAPA ACTUAL'}.stepper li.done{opacity:1}.stepper li.done::after{content:'✓ COMPLETADA'}
+.measurement-data{border-top:4px solid var(--blue)}label.f{font-size:16px;color:var(--fg);font-weight:650;gap:8px}input,select{font-size:19px;min-width:0;min-height:54px;border-width:2px}.measurement-data label:nth-child(1){color:var(--blue)}.measurement-data label:nth-child(2){color:var(--purple)}.measurement-data label:nth-child(3){color:var(--green)}.measurement-data input{font-family:var(--mono);font-size:23px;font-weight:700;padding:14px 12px}.measurement-data label:nth-child(1) input{border-color:var(--blue)}.measurement-data label:nth-child(2) input{border-color:var(--purple)}.measurement-data label:nth-child(3) input{border-color:var(--green)}
+.activities-card{border-top:4px solid var(--green)}.activity-heading{gap:18px!important;padding-bottom:18px;border-bottom:1px solid var(--line)}#start,#next,#loginSubmit{background:#15803d;border-color:#15803d;color:#fff;font-size:20px;font-weight:800;box-shadow:0 4px 12px #15803d30}#start:hover,#next:hover,#loginSubmit:hover{background:#166534;border-color:#166534}#addActivity{background:var(--blue-bg);border-color:var(--blue);color:var(--blue);font-weight:750}#defaultPlan{font-size:16px}.plan-item{gap:10px;padding:10px;margin:10px 0;background:var(--surface2);border:1px solid var(--line);border-radius:12px}.plan-item input{background:var(--surface);font-size:18px;font-weight:550}.plan-item>.pill{width:36px;height:36px;display:grid;place-items:center;flex:none;font-size:17px;background:var(--blue-bg);color:var(--blue);border-color:var(--blue);border-radius:10px}.plan-item .btn{font-size:16px}.plan-item .danger{font-size:15px}.pill{font-size:13px;padding:5px 10px}
+.now{padding:26px;border-radius:18px}.now h1{font-size:32px;margin:0}.timerBox{display:grid;grid-template-columns:1fr 1fr;gap:16px;background:transparent;border:0;padding:0}.timerBox>div{padding:18px;border-radius:14px;border:2px solid var(--blue);background:var(--blue-bg)}.timerBox>div:nth-child(2){border-color:var(--amber);background:var(--amber-bg)}.timerBox .clock{font-size:clamp(40px,4.8vw,64px);font-weight:800;color:var(--blue)}.timerBox>div:nth-child(2) .clock{color:var(--amber)}.lbl{font-size:14px;color:var(--fg);font-weight:750}.now .primary{font-size:24px;min-height:88px}.btn.warnb{background:#fbbf24;border-color:#fbbf24;color:#422006}.note{font-size:14px}.kpi{padding:22px;border-top:4px solid var(--blue);background:var(--blue-bg)}.kpi:nth-child(2){border-color:var(--purple);background:var(--surface)}.kpi:nth-child(3){border-color:var(--amber);background:var(--amber-bg)}.kpi:nth-child(4){border-color:var(--green);background:var(--green-bg)}.kpi .v{font-size:clamp(30px,3vw,40px);font-weight:800;margin-top:8px}.kpi .k{font-size:16px;font-weight:650;color:var(--fg)}table{font-size:16px}th{font-size:13px}td.num{font-size:18px;font-weight:650}th,td{padding:13px 12px}.banner{padding:18px;font-size:18px;font-weight:650}.chart-row span{font-size:15px}.chart-row .bar{height:24px}
+@media(max-width:950px){.stepper li{gap:10px;padding-inline:12px}.stepper li b{font-size:20px}.stage-number{width:40px;height:40px;font-size:23px}.stepper li.on::after,.stepper li.done::after{left:64px}.account{margin-left:0}.measurement-data .grid3{grid-template-columns:repeat(2,minmax(0,1fr))}.measurement-data input{font-size:19px;padding-inline:8px}}
+@media(max-width:600px){main{padding-inline:12px}.top{padding:12px}.brand b{font-size:19px}.tab{font-size:16px;padding:9px 12px}h1{font-size:28px}h2{font-size:22px}.card{padding:16px}.stepper{grid-template-columns:1fr;gap:10px}.stepper li{min-height:96px;padding:16px 14px 25px;gap:14px}.stepper li b{font-size:22px}.stepper li.on::after,.stepper li.done::after{left:68px;bottom:6px}.measurement-data .grid3{grid-template-columns:1fr}.measurement-data input{font-size:24px}.activity-heading>.row{width:100%}.activity-heading .btn{flex:1 1 140px}#start{flex-basis:100%;min-height:62px}.plan-item input{font-size:18px}.plan-item{padding:8px}.timerBox{grid-template-columns:1fr}.timerBox .clock{font-size:54px}.now{padding:18px}.now h1{font-size:28px}.actions .btn{flex:1 1 140px}.login-wrap{margin-top:28px}.login-wrap .card{padding:20px}}
+
+
+/* Solo la etapa actual conserva el color de énfasis. */
+.stepper li:not(.on){background:var(--surface2);border-color:var(--line);color:var(--muted);box-shadow:none;opacity:1}
+.stepper li:not(.on) b{color:var(--muted)}
+.stepper li:not(.on) .stage-number{background:var(--line);color:var(--muted)}
+.stepper li.done::after{color:var(--muted)}
+
+/* Lista compacta en dos columnas, en orden de izquierda a derecha. */
+#plan{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+#plan .plan-item{display:grid;grid-template-columns:36px minmax(0,1fr) auto auto auto;gap:8px;margin:0;min-width:0}
+#plan .plan-item input{width:100%;min-width:0}
+#plan .plan-item .btn{padding:8px 10px}
+@media(min-width:601px) and (max-width:1050px){
+ #plan .plan-item{grid-template-columns:36px minmax(0,1fr) auto auto}
+ #plan .plan-item input{grid-column:2 / -1}
+ #plan .plan-item [data-move][data-dir="-1"]{grid-column:2;justify-self:end}
+}
+@media(max-width:600px){
+ #plan{grid-template-columns:1fr}
+ #plan .plan-item{grid-template-columns:36px minmax(0,1fr) auto auto}
+ #plan .plan-item input{grid-column:2 / -1}
+ #plan .plan-item [data-move][data-dir="-1"]{grid-column:2;justify-self:end}
+}
+
+/* Leer de arriba hacia abajo y continuar en la columna derecha. */
+#plan{grid-auto-flow:column}
+@media(max-width:600px){#plan{grid-auto-flow:row;grid-template-rows:none!important}}
+
+/* La actividad actual es el reloj principal; el total queda como referencia. */
+.measurement-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.activity-heading-main{flex:1;min-width:0}
+.activity-heading-main h1{margin-top:14px}
+.total-mini{flex:none;min-width:112px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface2);text-align:right}
+.total-mini .lbl{font-size:11px;color:var(--muted);letter-spacing:.3px}
+.total-mini .clock{font-size:25px;font-weight:650;color:var(--muted);line-height:1.3;margin-top:4px}
+.timerBox.activity-timer{grid-template-columns:1fr}
+.activity-timer #stepClock{font-size:clamp(64px,7vw,88px);line-height:1.15;margin-top:10px}
+@media(max-width:600px){.measurement-heading{gap:10px}.total-mini{min-width:96px;padding:8px}.total-mini .clock{font-size:22px}.activity-heading-main h1{font-size:25px}.activity-timer #stepClock{font-size:68px}}
+
+.measurement-activities{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.measurement-activities li{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface2);font-size:16px}
+.activity-number{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:8px;background:var(--surface);color:var(--muted);font-weight:750;font-family:var(--mono)}
+.measurement-activities li.current{border:2px solid var(--blue);background:var(--blue-bg);box-shadow:0 0 0 3px color-mix(in srgb,var(--blue) 12%,transparent);font-weight:750}
+.measurement-activities li.current .activity-number{background:var(--blue);color:var(--blue-bg)}
+.activity-state{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+.measurement-activities li.current .activity-state{color:var(--blue);text-transform:uppercase;letter-spacing:.5px}
+.measurement-activities li.finished{color:var(--muted)}
+#s2 details summary{cursor:pointer;font-weight:650;padding:8px 0}
+
+.result-identification{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:20px 24px;margin:16px 0 20px;border:2px solid var(--blue);border-radius:16px;background:var(--blue-bg)}
+.result-identification>strong{font-size:26px;color:var(--fg)}
+.result-datetime{display:flex;gap:32px;flex-wrap:wrap}
+.result-datetime>div{display:flex;flex-direction:column;gap:4px}
+.result-datetime span{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--fg)}
+.result-datetime b{font-size:28px;font-family:var(--mono);color:var(--blue)}
+@media(max-width:600px){.result-identification{padding:18px}.result-identification>strong{font-size:24px}.result-datetime{gap:24px}.result-datetime b{font-size:25px}}
+
+.result-summary-scroll{overflow-x:auto;margin:16px 0 24px;padding-bottom:4px}
+.result-summary{display:grid;grid-template-columns:1.05fr .7fr 1.15fr 1.25fr 1.2fr;gap:12px;min-width:920px}
+.result-summary .kpi{padding:18px 16px;min-width:0;display:flex;flex-direction:column;justify-content:center;min-height:128px;border:1px solid var(--line);border-top:4px solid var(--blue);border-radius:14px;background:var(--blue-bg)}
+.result-summary .kpi .k{font-size:15px;font-weight:750;line-height:1.3}
+.result-summary .kpi .v{font-size:29px;font-weight:800;white-space:nowrap;margin-top:12px;line-height:1.2}
+.result-summary .kpi:nth-child(1) .v{font-size:24px;color:var(--blue)}
+.result-summary .kpi:nth-child(2){border-top-color:var(--purple);background:var(--surface)}
+.result-summary .kpi:nth-child(2) .v{color:var(--purple)}
+.result-summary .kpi:nth-child(3){border-top-color:var(--green);background:var(--green-bg)}
+.result-summary .kpi:nth-child(3) .v{color:var(--green);font-size:32px}
+.result-summary .kpi:nth-child(4){border-top-color:var(--purple);background:var(--surface)}
+.result-summary .kpi:nth-child(4) .v{color:var(--purple)}
+.result-summary .kpi:nth-child(5){border-top-color:var(--amber);background:var(--amber-bg)}
+.result-summary .kpi:nth-child(5) .v{color:var(--amber)}
+
+/* Dos grupos de color: fecha y hora; resultados de la medición. */
+.result-summary .kpi:nth-child(-n+2){border-top-color:var(--blue);background:var(--blue-bg)}
+.result-summary .kpi:nth-child(-n+2) .v{color:var(--blue)}
+.result-summary .kpi:nth-child(n+3){border-top-color:var(--green);background:var(--green-bg)}
+.result-summary .kpi:nth-child(n+3) .v{color:var(--green)}
+
+#v-hist>.row{align-items:flex-end}
+#v-hist>.row>#csv,#v-hist>.row>#xlsx,#v-hist>.row .f select{min-height:54px;height:54px}
+
+/* Fecha y horas comparten color; los tres resultados forman el segundo grupo. */
+.result-summary{grid-template-columns:1.1fr 1fr 1fr 1.15fr 1.25fr 1.2fr;min-width:1100px}
+.result-summary .kpi .v{font-size:27px}
+.result-summary .kpi:nth-child(-n+3){border-top-color:var(--blue);background:var(--blue-bg)}
+.result-summary .kpi:nth-child(-n+3) .v{color:var(--blue);font-size:23px}
+.result-summary .kpi:nth-child(n+4){border-top-color:var(--green);background:var(--green-bg)}
+.result-summary .kpi:nth-child(n+4) .v{color:var(--green);font-size:27px}
+
+.completion-dialog{width:min(420px,calc(100% - 32px));padding:32px 24px;text-align:center;background:var(--surface);color:var(--fg);border:2px solid var(--green);border-radius:20px;box-shadow:0 20px 70px #0005}
+.completion-dialog::backdrop{background:#0008}
+.completion-check{display:grid;place-items:center;width:72px;height:72px;margin:0 auto 18px;border-radius:50%;background:var(--green-bg);color:var(--green);font-size:44px;font-weight:800}
+.completion-dialog h2{font-size:27px;margin-bottom:10px}.completion-dialog p{color:var(--muted);margin:0;font-size:17px}
+@media(prefers-reduced-motion:no-preference){#appMain.finalizing{opacity:.35;transition:opacity .3s}.completion-dialog[open]{animation:completion-in .25s ease-out}#appMain.returning{animation:completion-in .3s ease-out}@keyframes completion-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}}
+
+.toast{background:#fbbf24;color:#422006;border:2px solid #f59e0b;box-shadow:0 6px 24px #0004;font-size:18px;font-weight:750;max-width:calc(100% - 32px);text-align:center}
+
+/* Evitar saltos de scroll al eliminar y redistribuir actividades. */
+#plan{overflow-anchor:none;align-content:start}
+.activities-card{overflow-anchor:none}
+
+#plan .plan-item.plan-moved{border-color:#fbbf24;background:var(--amber-bg);box-shadow:0 0 0 2px #fbbf24;position:relative;z-index:1}
+#plan .plan-item.plan-moved>.pill{background:#fbbf24;color:#422006;border-color:#fbbf24}
+#plan .plan-item.plan-moved input{border-color:#fbbf24}
+#plan [data-move]{font-size:21px;font-weight:800}
+
+#repeat{background:#7c3aed;border-color:#7c3aed;color:#fff;font-weight:750}
+#repeat:hover:not(:disabled){background:#6d28d9;border-color:#6d28d9}
+#skip{background:#fbbf24;border-color:#fbbf24;color:#422006;font-weight:750}
+#skip:hover:not(:disabled){background:#f59e0b;border-color:#f59e0b}
+#cancel{background:#dc2626;border-color:#dc2626;color:#fff;font-weight:750}
+#cancel:hover:not(:disabled){background:#b91c1c;border-color:#b91c1c}
+
+#histTable tr.new-measurement td{background:var(--amber-bg);border-top:2px solid #fbbf24;border-bottom:2px solid #fbbf24}
+#histTable tr.new-measurement td:first-child{box-shadow:inset 4px 0 #fbbf24}
+#histTable tr.new-measurement{scroll-margin-top:180px}
+.new-record-label{display:block;width:max-content;background:#fbbf24;color:#422006;border-radius:6px;font-size:12px;font-weight:800;padding:4px 8px;margin-top:7px}
+
+#next.last-activity{background:#0369a1;border-color:#0369a1;color:#fff;box-shadow:0 0 0 3px #38bdf840,0 4px 12px #0369a130}
+#next.last-activity:hover:not(:disabled){background:#075985;border-color:#075985}
+#repeat,#skip{font-size:21px;min-height:64px;padding:16px 24px}
+.cancel-action{display:flex;justify-content:flex-end}
+@media(max-width:600px){#repeat,#skip{font-size:20px;padding:16px 18px}}
+
+/* Lista de actividades en dos columnas durante la medición. */
+.measurement-activities{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-flow:column;align-content:start;gap:10px}
+.measurement-activities li{min-width:0;padding:10px;gap:8px;align-items:flex-start;font-size:15px;line-height:1.35}
+.measurement-activities li>div{min-width:0;overflow-wrap:anywhere}
+.measurement-activities .activity-number{width:28px;height:28px;font-size:14px;margin-top:1px}
+@media(min-width:901px){.run{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)}}
+@media(max-width:600px){.measurement-activities{grid-template-columns:1fr;grid-auto-flow:row;grid-template-rows:none!important}}
+
+.cancel-action{margin-top:28px;padding-top:28px}
+
+.measurement-activities li.omitted{border-color:#ef4444;background:var(--warn-soft)}
+.measurement-activities li.omitted .activity-number{background:#dc2626;color:#fff}
+.measurement-activities li.omitted .activity-state{color:var(--warn);font-size:13px;font-weight:800}
+.measurement-activities li.omitted .activity-state>span{display:inline-grid;place-items:center;width:20px;height:20px;margin-right:4px;border-radius:50%;background:#dc2626;color:white}
+
+/* Reservar la altura del título más largo para que los controles queden fijos. */
+.activity-heading-main{position:relative}
+.activity-heading-main h1{overflow-wrap:anywhere}
+.activity-heading-main>.row{min-height:48px;align-content:flex-start;align-items:flex-start}
+
+.omitted-label{display:inline-block;padding:6px 10px;background:#fbbf24;color:#422006;border:1px solid #f59e0b;border-radius:8px;font-weight:800;white-space:nowrap}
+.omitted-result td{background:var(--warn-soft)}
+.omitted-result td:first-child{box-shadow:inset 4px 0 #ef4444}
+.omitted-summary{margin:0 0 18px;border:1px solid #f59e0b}
+</style><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script></head><body>
+<header class="top"><div class="brand"><b>SMED · Troqueladora</b><span>Medición de actividades del setup</span></div><nav class="tabs" id="appNav" aria-label="Secciones" hidden><button class="tab" data-v="nuevo" aria-selected="true">Medir setup</button><button class="tab" data-v="hist">Historial</button><button class="tab" data-v="dash">Análisis</button><button class="tab" data-v="conf">Configuración</button></nav><div class="account" id="account" hidden><span id="accountName"></span><button class="btn" id="logout">Cerrar sesión</button></div></header>
+<section class="login-wrap" id="loginScreen" aria-labelledby="loginTitle"><div class="card"><span class="pill p-ext">Supervisor</span><h1 id="loginTitle" style="margin-top:12px">Iniciar sesión</h1><p class="sub" id="loginIntro">Ingresa para medir y revisar los tiempos de setup.</p><form id="loginForm"><label class="f">Usuario<input id="loginUser" name="username" autocomplete="username" required minlength="3" maxlength="60" placeholder="Tu usuario de supervisor" autocapitalize="none" spellcheck="false"></label><label class="f">Contraseña<div class="password-row"><input id="loginPassword" name="password" type="password" autocomplete="current-password" required><button class="btn" id="showPassword" type="button" aria-label="Mostrar contraseña" aria-pressed="false">Mostrar</button></div></label><label class="f" id="confirmPasswordField" hidden>Confirmar contraseña<input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password"></label><p class="login-error" id="loginError" role="alert"></p><button class="btn primary" id="loginSubmit" type="submit">Ingresar</button></form><p class="note" id="loginRunning" hidden>Hay una medición en curso. La parada continúa contando; inicia sesión para retomarla.</p></div></section><main id="appMain" hidden><section id="v-nuevo"><ol class="stepper" id="stepper"><li data-s="1"><span class="stage-number" aria-hidden="true">1</span><div class="stage-content"><b>Preparar medición</b>Lista de actividades</div></li><li data-s="2"><span class="stage-number" aria-hidden="true">2</span><div class="stage-content"><b>Medir</b>Registrar cada actividad</div></li><li data-s="3"><span class="stage-number" aria-hidden="true">3</span><div class="stage-content"><b>Revisar resultado</b>Tiempos e incidencias</div></li></ol>
+<div id="s1"><h1>Preparar la medición</h1><div class="card measurement-data" style="margin-bottom:16px"><h2>Datos de la medición</h2><div class="grid3"><label class="f">Fecha de la medición<input id="measurementDate" type="date" required></label><label class="f">Hora de la medición<input id="measurementTime" type="time" required readonly></label></div></div><div class="card activities-card"><div class="row activity-heading" style="justify-content:space-between;margin-bottom:16px"><h2 style="margin:0">Actividades que se medirán</h2><div class="row"><button class="btn" id="addActivity">+ Agregar actividad</button><button class="btn" id="defaultPlan">Usar lista de referencia</button><button class="btn primary" id="start">▶ Iniciar parada y medición</button></div></div><div id="plan"></div><p class="note" id="draftNote" role="status"></p></div></div>
+<div id="s2" hidden><div class="run"><div class="now"><div class="measurement-heading"><div class="activity-heading-main"><div class="row"><span class="pill p-int" id="nowTag"></span><span class="pill p-warn" id="demoNote" hidden>Demo · 1 s = 1 min</span></div><h1 id="nowName"></h1></div><div class="total-mini"><div class="lbl">Parada total</div><div class="clock" id="totClock">00:00</div></div></div><div class="timerBox activity-timer"><div><div class="lbl">Actividad actual</div><div class="clock" id="stepClock">00:00</div></div></div><div id="measureButtons"><button class="btn primary big" id="next"></button><div class="actions" style="margin-top:12px"><button class="btn" id="repeat">Repetir actividad</button><button class="btn" id="skip">Omitir actividad</button></div></div><div id="incidentBox" class="banner warn" hidden><div><b id="incidentLabel"></b><div class="clock" id="incidentClock">00:00</div></div><button class="btn warnb big" id="endIncident">Terminar incidencia y continuar</button></div><div class="group cancel-action"><button class="btn danger" id="cancel">Cancelar medición</button></div></div><div class="card"><h2>Actividades de esta medición</h2><ol class="measurement-activities" id="upcoming"></ol></div></div></div>
+<div id="s3" hidden><h1>Resultado de la medición</h1><div id="result"></div></div></section>
+<section id="v-hist" hidden><h1>Historial de mediciones</h1><div class="row" style="margin-bottom:16px"><label class="f">Origen<select id="hOrig"><option value="">Todos</option><option>Piloto</option><option>Planta</option><option>Simulado</option><option>Demo</option></select></label><button class="btn" id="csv">Exportar CSV</button><button class="btn" id="xlsx">Exportar Excel</button></div><div class="tw"><table id="histTable"></table></div></section>
+<section id="v-dash" hidden><h1>Análisis de tiempos</h1><div class="row" style="margin-bottom:18px"><label class="f">Datos del análisis<select id="analysisOrigin"><option value="">Planta, piloto y simulados</option><option value="Planta">Solo planta</option><option value="Simulado">Solo simulados</option><option value="Piloto">Solo piloto</option></select></label></div><div class="grid3" id="dashKpis"></div><div class="grid2" style="margin-top:16px"><div class="card"><h2>Actividades con mayor tiempo promedio</h2><div id="chart1"></div></div><div class="card"><h2>Variación por actividad</h2><div class="tw"><table id="chart2"></table></div></div></div></section>
+<section id="v-conf" hidden><h1>Configuración</h1><div class="grid2"><div class="card"><h2>Medición</h2><label class="f">Meta de parada (minutos)<input id="cMeta" type="number" min="1" step="0.1"></label><label class="check"><input id="cCompare" type="checkbox"><span>Mostrar comparación con la meta</span></label><label class="check"><input id="cDemo" type="checkbox"><span>Modo demostración: 1 segundo equivale a 1 minuto. Se aplica a la siguiente medición.</span></label><button class="btn primary" id="saveConf">Guardar configuración</button></div><div class="card"><h2>Datos y continuidad</h2><p>La medición en curso se recupera al recargar la página. Mientras esté iniciada, la parada sigue contando aunque cierres la pestaña.</p><button class="btn" id="reset">Restablecer registros simulados</button></div></div></section></main>
+<dialog id="completionDialog" class="completion-dialog" aria-labelledby="completionTitle"><div class="completion-check" aria-hidden="true">✓</div><h2 id="completionTitle">Medición finalizada y guardada</h2><p>Abriendo el historial…</p></dialog><dialog class="detail" id="detail"><div class="row" style="justify-content:space-between"><h2>Detalle de la medición</h2><button class="btn" id="closeDetail">Cerrar</button></div><div id="detailBody"></div></dialog>
+<dialog class="detail" id="promptDialog"><form id="promptForm"><h2 id="promptTitle"></h2><p id="promptHelp" class="note"></p><div id="promptFields"></div><p id="promptError" role="alert" style="color:var(--warn)"></p><div class="actions"><button class="btn primary" type="submit">Confirmar</button><button class="btn" type="button" id="promptCancel">Cancelar</button></div></form></dialog><div class="toast" id="toast" role="status" hidden></div>
+<script>
+const STEPS = [
+ {n:1,name:'Revisar orden de producción',fase:'Externa',tec:'Combinar',base:5.93,desc:'Código, cantidad, dimensiones, tipo de cartón y tolerancias en un solo checklist.'},
+ {n:2,name:'Alistar kit del siguiente pedido',fase:'Externa',tec:'Combinar / Reorganizar',base:10.10,desc:'Troquel, láminas y herramientas de ajuste reunidos en una sola ronda, antes de detener la máquina.'},
+ {n:3,name:'Despejar zona de trabajo',fase:'Interna',tec:'Reorganizar',base:0.84,desc:'Retirar todo lo que no corresponda al nuevo pedido antes de revisar guardas.'},
+ {n:4,name:'Revisar guardas y confirmar zona libre',fase:'Interna',tec:'Combinar',base:0.99,desc:'Una sola revisión, después de despejar.'},
+ {n:5,name:'Comprobar paro de emergencia',fase:'Interna',tec:'Sin cambio',base:0.49,desc:'Confirmar que el botón de parada funciona.'},
+ {n:6,name:'Deslizar troquel hasta el tope',fase:'Interna',tec:'Combinar',base:9.85,desc:'Guiar el troquel con el riel graduado hasta la marca de la ficha técnica; se instala y centra en un solo movimiento.'},
+ {n:7,name:'Fijar con prensas de acción rápida',fase:'Interna',tec:'Simplificar',base:2.29,desc:'Asegurar el troquel con las palancas de sujeción rápida en lugar de tornillos.'},
+ {n:8,name:'Verificar holguras',fase:'Interna',tec:'Sin cambio',base:1.95,desc:'Revisión visual de que el troquel quedó asentado, sin espacios ni desalineación.'},
+ {n:9,name:'Colocar paquete de láminas en la mesa',fase:'Interna',tec:'Reorganizar',base:2.17,desc:'Deslizar el paquete desde el carrito a la altura de la mesa.'},
+ {n:10,name:'Alinear láminas con guías de riel graduado',fase:'Interna',tec:'Combinar',base:3.86,desc:'Ajustar las guías laterales a la marca del formato del producto.'},
+ {n:11,name:'Probar avance del material',fase:'Interna',tec:'Reducir',base:3.78,desc:'Correr una lámina para confirmar que entra bien a la máquina.'},
+ {n:12,name:'Ajustar presión, velocidad y registro',fase:'Interna',tec:'Sin cambio',base:9.13,desc:'Configurar los tres parámetros según la ficha técnica del producto.'},
+ {n:13,name:'Cortar pieza de prueba y verificar con plantilla',fase:'Interna',tec:'Combinar',base:2.23,desc:'Una sola pieza: la plantilla confirma presión y registro.',verif:true},
+ {n:14,name:'Confirmar condiciones seguras',fase:'Interna',tec:'Simplificar',base:1.00,desc:'Checklist rápido: zona, guardas y paro de emergencia.'},
+ {n:15,name:'Ejecutar hojas de prueba y verificar con plantilla',fase:'Interna',tec:'Reducir / Combinar',base:9.27,desc:'Calidad de corte, hendido, dimensiones y ausencia de rebabas en una sola verificación.',verif:true},
+ {n:16,name:'Aprobar y pasar a producción',fase:'Interna',tec:'Sin cambio',base:0,desc:'Si las muestras pasan, se da por concluido el setup.'}
+];
+const PILOT = [
+ {id:'R1',fecha:'2026-09-30',orden:'—',oper:'Operario troqueladora',prod:'BASE DE TORTA #20 - DUPLEX BLANCO',troq:'',origen:'Piloto',t:[3.7,9.41,0.57,0.64,0.36,6.31,1.43,1.63,2.31,2.52,1.8,8.17,1.73,0.73,6.15],exc:0},
+ {id:'R2',fecha:'2026-09-30',orden:'—',oper:'Operario troqueladora',prod:'BASE DE TORTA #30*40 - BLANCO PLASTIFICADO',troq:'',origen:'Piloto',t:[4.3,8.66,0.27,1.03,0.64,6.01,1.06,1.66,2.19,2.49,1.73,7.18,1.9,0.49,5.19],exc:0},
+ {id:'R3',fecha:'2026-09-30',orden:'—',oper:'Operario troqueladora',prod:'BASE DE TORTA #30 - LOGO DJULIA IMPRESO',troq:'',origen:'Piloto',t:[4.05,9.2,0.53,0.51,0.4,6.6,0.86,1.57,2.13,1.66,1.62,8.18,1.59,0.55,6.23],exc:2.26}
+];
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const r2=x=>Math.round(x*100)/100, fmtD=x=>Number(x||0).toFixed(2);
+function fmt(m){const s=Math.max(0,Math.round((m||0)*60));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+function load(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch{toast('No se pudo guardar. Exporta tus datos antes de cerrar.');return false}}
+function toast(msg){$('#toast').textContent=msg;$('#toast').hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').hidden=true,4000)}
+const uid=()=>crypto.randomUUID?crypto.randomUUID():'S'+Date.now()+Math.random().toString(16).slice(2);
+const K_REG='smedTroq.registros.v1',K_CFG='smedTroq.config.v1',K_RUN='smedTroq.medicion.v2';
+let REG=[],CFG={meta:33.6,demo:false,compare:false,...load(K_CFG,{})};
+let backendState={configured:false,user:null,databaseId:null},savingRecord=false;
+async function api(path,method='GET',body){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),20000);
+ try{
+  const response=await fetch(path,{method,credentials:'same-origin',signal:controller.signal,headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});
+  const value=await response.json();if(!response.ok)throw new Error(value.error||'No se pudo completar la operación.');return value;
+ }catch(error){if(error.name==='AbortError'||error instanceof TypeError)throw new Error('No se pudo conectar con el servidor. La medición pendiente se conserva para reintentar.');throw error}
+ finally{clearTimeout(timer)}
+}
+async function refreshRecords(){const data=await api('/api/records');REG=data.records;}
+async function saveRecord(record){const saved=await api('/api/records','POST',record);Object.assign(record,saved);const index=REG.findIndex(r=>r.id===saved.id);if(index>=0)REG[index]=record;else REG.push(record);return saved;}
+async function loadBackendData(){
+ const marker='smedTroq.imported.'+backendState.databaseId;
+ if(!load(marker,false)){
+  const old=load(K_REG,[]);if(Array.isArray(old)&&old.length)await api('/api/records/import','POST',{records:old});
+  save(marker,true);
+ }
+ await refreshRecords();CFG=await api('/api/config');save(K_CFG,CFG);
+}
+const defaultPlan=()=>STEPS.slice(2).map(s=>({id:'P'+s.n,name:s.name,base:s.base}));
+function fresh(withReference=true){return{phase:1,data:{},plan:withReference?defaultPlan():[],kit:{},entries:[],extStart:null,extEnd:null,start:null,activityStart:null,activityAccum:0,idx:0,incident:null,repeat:false,scale:1,audit:[]}}
+let RUN=load(K_RUN,null)||fresh(true),lastId=null,detailId=null,historyHighlightId=null;
+// Conservar una medición del prototipo anterior, incluida una parada activa.
+const oldRun=load('smedTroq.run.v1',null);
+if(!load(K_RUN,null)&&oldRun){
+ RUN.data=oldRun.data||{};RUN.kit=oldRun.kit||{};RUN.extStart=oldRun.extStart;RUN.extEnd=oldRun.extEnd;RUN.scale=CFG.demo?60:1;
+ if(oldRun.phase===3){RUN.phase=2;RUN.start=oldRun.start;RUN.idx=oldRun.stepIdx-2;RUN.activityStart=oldRun.stepStart;RUN.plan=defaultPlan();RUN.entries=STEPS.slice(2,oldRun.stepIdx).map((s,i)=>({id:uid(),activityId:'P'+s.n,name:s.name,type:'Actividad',minutes:oldRun.t[i+2],status:'Registrada',audit:[]}));if(oldRun.exc)RUN.entries.push({id:uid(),name:'Reproceso anterior',type:'Incidencia',minutes:oldRun.exc,status:'Registrada',audit:[]});if(oldRun.excStart)RUN.incident={name:'Reproceso anterior',start:oldRun.excStart};RUN.legacy=true;}
+ save(K_RUN,RUN);
+}
+if(RUN.phase===1&&!RUN.plan.length){RUN.plan=defaultPlan();save(K_RUN,RUN)}
+function persist(){save(K_RUN,RUN)}
+const elapsed=(a,b=Date.now())=>Math.max(0,(b-a)/60000*RUN.scale);
+function entriesOf(r){if(r.entries)return r.entries;return STEPS.slice(2,15).map((s,i)=>({id:r.id+'-'+i,activityId:'P'+s.n,name:s.name,type:'Actividad',minutes:r.t[i+2]||0,status:'Registrada',audit:[]})).concat(r.exc?[{id:r.id+'-exc',name:'Reproceso',type:'Incidencia',minutes:r.exc,status:'Registrada',audit:[]}]:[])}
+const total=r=>entriesOf(r).reduce((a,e)=>a+e.minutes,0);
+const incidents=r=>entriesOf(r).filter(e=>e.type==='Incidencia').reduce((a,e)=>a+e.minutes,0);
+const omittedCount=r=>new Set(entriesOf(r).filter(e=>e.status==='Omitida'&&e.type!=='Incidencia').map(e=>e.activityId||e.name)).size;
+const complete=r=>!r.legacy&&!entriesOf(r).some(e=>e.status==='Omitida');
+function view(v){if(!signedIn)return;$$('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.v===v));['nuevo','hist','dash','conf'].forEach(x=>$('#v-'+x).hidden=x!==v);if(v==='hist'){renderHist();refreshRecords().then(()=>{if(!$('#v-hist').hidden)renderHist()}).catch(e=>toast(e.message))}if(v==='dash'){renderDash();refreshRecords().then(()=>{if(!$('#v-dash').hidden)renderDash()}).catch(e=>toast(e.message))}if(v==='conf'){$('#cMeta').value=CFG.meta;$('#cDemo').checked=CFG.demo;$('#cCompare').checked=CFG.compare}}
+function stage(n){for(let i=1;i<=3;i++){$('#s'+i).hidden=i!==n;$('#stepper li[data-s="'+i+'"]').className=i===n?'on':i<n?'done':''}}
+$$('.tab').forEach(b=>b.onclick=()=>view(b.dataset.v));$$('[data-go]').forEach(b=>b.onclick=()=>view(b.dataset.go));
+let promptAction=null;
+function ask(title,help,fields,action){$('#promptTitle').textContent=title;$('#promptHelp').textContent=help;$('#promptFields').innerHTML=fields;$('#promptError').textContent='';promptAction=action;$('#promptDialog').showModal();$('#promptFields input, #promptFields select, #promptFields textarea')?.focus()}
+$('#promptCancel').onclick=()=>$('#promptDialog').close();$('#promptForm').onsubmit=async e=>{e.preventDefault();const submit=$('#promptForm button[type=submit]');if(submit.disabled)return;submit.disabled=true;try{const error=await promptAction?.();if(error){$('#promptError').textContent=error;return}$('#promptDialog').close()}catch(error){$('#promptError').textContent=error.message}finally{submit.disabled=false}};
+function limaDateTime(timestamp=Date.now()){
+ const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Lima',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(timestamp));
+ const v=Object.fromEntries(parts.map(p=>[p.type,p.value]));return {date:`${v.year}-${v.month}-${v.day}`,time:`${v.hour}:${v.minute}`};
+}
+function ensureMeasurementData(){
+ RUN.data=RUN.data||{};const now=limaDateTime(RUN.start||Date.now());
+ if(!RUN.data.measurementDate)RUN.data.measurementDate=now.date;
+ if(RUN.phase===1||!RUN.data.measurementTime)RUN.data.measurementTime=now.time;
+}
+$('#measurementDate').oninput=()=>{RUN.data.measurementDate=$('#measurementDate').value;persist()};
+
+function renderDraft(){if(!RUN.plan.length){$('#plan').style.minHeight='';$('#plan').innerHTML=''}ensureMeasurementData();$('#measurementDate').value=RUN.data.measurementDate;$('#measurementTime').value=RUN.data.measurementTime;renderPlan();tick();$('#draftNote').textContent=CFG.demo?'Modo demostración activado para esta medición.':''}
+let moveHighlightTimer=null;
+function moveActivity(index,direction){
+ const destination=index+direction;if(destination<0||destination>=RUN.plan.length)return;
+ const moved=RUN.plan[index],positions=new Map($$('#plan .plan-item').map(row=>[row.dataset.activityId,row.getBoundingClientRect()]));
+ const scrollX=window.scrollX,scrollY=window.scrollY;
+ [RUN.plan[index],RUN.plan[destination]]=[RUN.plan[destination],RUN.plan[index]];persist();renderPlan();
+ const rows=$$('#plan .plan-item'),selected=rows.find(row=>row.dataset.activityId===moved.id);
+ selected.classList.add('plan-moved');selected.querySelector('.pill').title=`Posición anterior: ${index+1} · Posición actual: ${destination+1}`;
+ selected.querySelector(`[data-dir="${direction}"]`).focus({preventScroll:true});
+ window.scrollTo({left:scrollX,top:scrollY,behavior:'instant'});
+ if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+  rows.forEach(row=>{const before=positions.get(row.dataset.activityId),after=row.getBoundingClientRect();if(!before)return;const x=before.left-after.left,y=before.top-after.top;if(x||y)row.animate([{transform:`translate(${x}px,${y}px)`},{transform:'translate(0,0)'}],{duration:300,easing:'ease-out'});});
+ }
+ clearTimeout(moveHighlightTimer);moveHighlightTimer=setTimeout(()=>selected.classList.remove('plan-moved'),3000);
+ toast(`${moved.name.trim()||'Actividad sin nombre'}: posición ${index+1} → ${destination+1}`);
+}
+function renderPlan(){$('#start').disabled=RUN.plan.length===0;$('#plan').style.gridTemplateRows=RUN.plan.length?'repeat('+Math.ceil(RUN.plan.length/2)+',auto)':'none';$('#plan').innerHTML=RUN.plan.map((a,i)=>`<div class="plan-item" data-activity-id="${esc(a.id)}"><span class="pill p-muted">${i+1}</span><input aria-label="Nombre de actividad ${i+1}" data-name="${i}" value="${esc(a.name)}" maxlength="180"><button class="btn" data-move="${i}" data-dir="-1" title="Subir una posición" aria-label="Subir actividad ${i+1}" ${i===0?'disabled':''}>↑</button><button class="btn" data-move="${i}" data-dir="1" title="Bajar una posición" aria-label="Bajar actividad ${i+1}" ${i===RUN.plan.length-1?'disabled':''}>↓</button><button class="btn danger" data-remove="${i}" aria-label="Quitar actividad ${i+1}" >Quitar</button></div>`).join('');$$('[data-name]').forEach(el=>el.oninput=()=>{RUN.plan[+el.dataset.name].name=el.value;persist()});$$('[data-move]').forEach(el=>el.onclick=()=>moveActivity(+el.dataset.move,Number(el.dataset.dir)));$$('[data-remove]').forEach(el=>el.onclick=()=>{
+ const scrollX=window.scrollX,scrollY=window.scrollY,plan=$('#plan');
+ // Reservar el espacio antes de eliminar para que el navegador no ajuste el scroll.
+ plan.style.minHeight=Math.max(plan.getBoundingClientRect().height,parseFloat(plan.style.minHeight)||0)+'px';
+ RUN.plan.splice(+el.dataset.remove,1);persist();renderPlan();
+ window.scrollTo({left:scrollX,top:scrollY,behavior:'instant'});
+})}
+$('#addActivity').onclick=()=>{RUN.plan.push({id:uid(),name:'',base:null});persist();renderPlan();$$('[data-name]').at(-1).focus()};$('#defaultPlan').onclick=()=>ask('Usar lista de referencia','Se reemplazará la lista de actividades de esta preparación. Los registros anteriores se conservan.','',()=>{RUN.plan=defaultPlan();persist();renderPlan()});
+$('#start').onclick=()=>{if(!RUN.plan.length){toast('Agrega actividades antes de iniciar la medición.');return}tick();
+ for(const id of ['measurementDate','measurementTime'])if(!$('#'+id).reportValidity())return;
+ RUN.data.measurementDate=$('#measurementDate').value;RUN.data.measurementTime=$('#measurementTime').value;
+ if(RUN.plan.some(a=>!a.name.trim())){toast('Escribe un nombre para cada actividad.');return}const names=RUN.plan.map(a=>a.name.trim().toLocaleLowerCase());if(new Set(names).size!==names.length){toast('Usa nombres distintos para identificar cada actividad.');return}RUN.plan.forEach(a=>a.name=a.name.trim());const now=Date.now();if(RUN.extStart&&!RUN.extEnd)RUN.extEnd=now;RUN.scale=RUN.extStart?RUN.scale:CFG.demo?60:1;RUN.demo=RUN.scale===60;RUN.phase=2;RUN.start=now;RUN.activityStart=now;RUN.meta=CFG.meta;persist();renderRun();stage(2)};
+function activityNow(){return RUN.activityAccum+elapsed(RUN.activityStart,RUN.incident?RUN.incident.start:Date.now())}
+function addEntry(status='Registrada',end=Date.now()){const a=RUN.plan[RUN.idx];RUN.entries.push({id:uid(),activityId:a.id,name:a.name,type:RUN.repeat?'Repetición':'Actividad',minutes:RUN.activityAccum+elapsed(RUN.activityStart,end),start:RUN.activityStart,end,status,audit:[]});RUN.activityAccum=0;RUN.activityStart=end;RUN.repeat=false}
+let titleLayoutFrame=null;
+function reserveActivityTitleSpace(){
+ const title=$('#nowName'),container=$('.activity-heading-main');
+ const width=title.getBoundingClientRect().width;if(!width||!RUN.plan.length)return;
+ const probe=document.createElement('h1');probe.setAttribute('aria-hidden','true');
+ Object.assign(probe.style,{position:'absolute',visibility:'hidden',pointerEvents:'none',width:width+'px',minHeight:'0',height:'auto',margin:'0',top:'0',left:'0'});
+ container.appendChild(probe);
+ let maxHeight=0;
+ RUN.plan.forEach(a=>{probe.textContent=a.name;maxHeight=Math.max(maxHeight,probe.getBoundingClientRect().height)});
+ probe.remove();title.style.minHeight=Math.ceil(maxHeight)+'px';
+}
+function scheduleActivityTitleLayout(){cancelAnimationFrame(titleLayoutFrame);titleLayoutFrame=requestAnimationFrame(reserveActivityTitleSpace)}
+window.addEventListener('resize',scheduleActivityTitleLayout);
+function renderRun(){const a=RUN.plan[RUN.idx];$('#nowTag').textContent=`Actividad ${RUN.idx+1} de ${RUN.plan.length}${RUN.repeat?' · repetición':''}`;$('#nowName').textContent=a.name;$('#demoNote').hidden=!RUN.demo&&RUN.scale!==60;const isLastActivity=RUN.idx===RUN.plan.length-1;$('#next').classList.toggle('last-activity',isLastActivity);$('#next').textContent=isLastActivity?'■ Terminar última actividad y finalizar setup':'✓ Terminar actividad e iniciar siguiente';$('#measureButtons').hidden=!!RUN.incident;$('#incidentBox').hidden=!RUN.incident;if(RUN.incident)$('#incidentLabel').textContent=RUN.incident.name;$('#upcoming').style.gridTemplateRows='repeat('+Math.max(1,Math.ceil(RUN.plan.length/2))+',auto)';$('#upcoming').innerHTML=RUN.plan.map((a,i)=>{
+ const lastEntry=RUN.entries.slice().reverse().find(e=>e.activityId===a.id&&e.type!=='Incidencia');
+ const omitted=i<RUN.idx&&lastEntry?.status==='Omitida';
+ return `<li class="${i===RUN.idx?'current':omitted?'omitted':i<RUN.idx?'finished':''}" ${i===RUN.idx?'aria-current="step"':''}><span class="activity-number">${i+1}</span><div><span>${esc(a.name)}</span>${i===RUN.idx?'<b class="activity-state">En medición</b>':omitted?'<b class="activity-state"><span aria-hidden="true">✕</span> Omitida</b>':i<RUN.idx?'<span class="activity-state">Registrada</span>':''}</div></li>`;
+ }).join('');if(RUN.pendingRecord){$('#next').textContent='Reintentar guardar medición';}['repeat','skip'].forEach(id=>$('#'+id).disabled=!!RUN.pendingRecord);renderLog();tick();reserveActivityTitleSpace();scheduleActivityTitleLayout()}
+function renderLog(){if(!$('#liveLog'))return;$('#liveLog').innerHTML=RUN.entries.length?RUN.entries.map(e=>`<div class="check"><div style="flex:1"><b>${esc(e.name)}</b><div class="note">${esc(e.type)} · ${esc(e.status)} · ${fmt(e.minutes)}${e.audit?.length?' · corregida':''}</div></div><button class="btn" data-live-edit="${esc(e.id)}">Corregir</button></div>`).join(''):'<p class="empty">Aquí aparecerán las actividades registradas.</p>';$$('[data-live-edit]').forEach(b=>b.onclick=()=>correct(RUN,b.dataset.liveEdit,()=>{persist();renderLog()}))}
+function advance(status='Registrada'){const now=Date.now();addEntry(status,now);if(RUN.idx===RUN.plan.length-1)finish(now);else{RUN.idx++;persist();renderRun()}}
+$('#next').onclick=()=>RUN.pendingRecord?finish(RUN.pendingRecord.end):advance();$('#repeat').onclick=()=>{addEntry();RUN.repeat=true;persist();renderRun();toast('Se registra una nueva ejecución de la misma actividad.')};
+$('#skip').onclick=()=>advance('Omitida');
+$('#endIncident').onclick=()=>{const now=Date.now(),i=RUN.incident;RUN.activityAccum+=elapsed(RUN.activityStart,i.start);RUN.entries.push({id:uid(),name:i.name,note:i.note,type:'Incidencia',minutes:elapsed(i.start,now),start:i.start,end:now,status:'Registrada',audit:[]});RUN.activityStart=now;RUN.incident=null;persist();renderRun()};
+$('#cancel').onclick=()=>ask('Cancelar esta medición','Se descartarán los tiempos de esta medición en curso. Los registros del historial se conservan.','',()=>{RUN=fresh();persist();renderDraft();stage(1)});
+function tick(){if(RUN.phase===1){const time=limaDateTime().time;RUN.data=RUN.data||{};RUN.data.measurementTime=time;if($('#measurementTime').value!==time)$('#measurementTime').value=time;}if(RUN.phase===2){$('#stepClock').textContent=fmt(activityNow());$('#totClock').textContent=fmt(elapsed(RUN.start));if(RUN.incident)$('#incidentClock').textContent=fmt(elapsed(RUN.incident.start))}}
+setInterval(tick,250);
+function measurementClock(timestamp){return new Intl.DateTimeFormat('en-GB',{timeZone:'America/Lima',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date(timestamp))}
+function startTime(r){return r.horaInicio||(Number.isFinite(r.start)?measurementClock(r.start):r.hora||'—')}
+function endTime(r){return r.horaFin||(Number.isFinite(r.end)?measurementClock(r.end):'—')}
+async function finish(now){
+ if(savingRecord)return;
+ const rec=RUN.pendingRecord||{id:uid(),fecha:RUN.data.measurementDate||limaDateTime(RUN.start).date,hora:RUN.data.measurementTime||limaDateTime(RUN.start).time,horaInicio:measurementClock(RUN.start),horaFin:measurementClock(now),origen:RUN.demo||RUN.scale===60?'Demo':'Planta',entries:structuredClone(RUN.entries),plan:structuredClone(RUN.plan),measuredTotal:elapsed(RUN.start,now),external:RUN.extStart?elapsed(RUN.extStart,RUN.extEnd):0,meta:RUN.meta||CFG.meta,legacy:!!RUN.legacy,audit:[],start:RUN.start,end:now};
+ RUN.pendingRecord=rec;persist();savingRecord=true;
+ $('#next').disabled=true;$('#next').textContent='Guardando medición…';$('#repeat').disabled=true;$('#skip').disabled=true;
+ try{
+  await saveRecord(rec);lastId=rec.id;RUN=fresh();persist();renderResult(rec,$('#result'));stage(3);toast('Medición guardada en la base de datos.');
+ }catch(error){toast(error.message);$('#next').textContent='Reintentar guardar medición'}
+ finally{savingRecord=false;$('#next').disabled=false}
+}
+function correct(record,id,refresh){const entries=entriesOf(record),e=entries.find(x=>x.id===id);ask('Corregir tiempo registrado','Escribe el tiempo correcto y el motivo. Se conserva el valor anterior en el historial de correcciones.',`<p>${esc(e.name)}</p><label class="f">Duración (minutos) *<input id="editMinutes" type="number" min="0" step="any" value="${e.minutes}" required></label><label class="f" style="margin-top:12px">Motivo de la corrección *<input id="editReason" required maxlength="250" placeholder="Ej.: pulsé 10 segundos tarde"></label>`,async()=>{const value=Number($('#editMinutes').value),reason=$('#editReason').value.trim();if(!Number.isFinite(value)||value<0||!reason)return 'Indica una duración válida y el motivo.';if(!record.entries)record.entries=entries;const originalEntries=record.entries,backup=structuredClone(record);const change={date:new Date().toISOString(),from:e.minutes,to:value,reason};e.audit=e.audit||[];e.audit.push(change);e.minutes=value;record.audit=record.audit||[];record.audit.push({entry:e.id,...change});try{await refresh();toast('Corrección guardada con su motivo.')}catch(error){Object.keys(record).forEach(k=>delete record[k]);Object.assign(record,backup);if(!originalEntries)delete record.entries;throw error}})}
+function activityOrder(r,e){
+ if(e.type==='Incidencia')return '—';
+ const plan=r.plan|| (r.t?STEPS.slice(2,15).map(s=>({id:'P'+s.n,name:s.name})):entriesOf(r).filter(x=>x.type!=='Incidencia').filter((x,i,all)=>all.findIndex(y=>(y.activityId||y.name)===(x.activityId||x.name))===i).map(x=>({id:x.activityId,name:x.name})));
+ const index=plan.findIndex(a=>e.activityId?a.id===e.activityId:a.name===e.name);return index>=0?index+1:'—';
+}
+function resultTable(r){return `<div class="tw"><table><thead><tr><th>N.º</th><th>Actividad / incidencia</th><th>Tipo</th><th>Estado</th><th class="num">Minutos</th><th>Notas y correcciones</th><th></th></tr></thead><tbody>${entriesOf(r).map(e=>`<tr class="${e.status==='Omitida'?'omitted-result':''}"><td class="num">${activityOrder(r,e)}</td><td>${esc(e.name)}</td><td>${esc(e.type)}</td><td>${e.status==='Omitida'?'<span class="omitted-label">✕ Omitida</span>':esc(e.status)}</td><td class="num">${fmtD(e.minutes)}</td><td style="white-space:normal;min-width:180px">${esc(e.note||'')}${(e.audit||[]).map(a=>`<div class="note">${fmtD(a.from)} → ${fmtD(a.to)} min: ${esc(a.reason)}</div>`).join('')}</td><td><button class="btn" data-edit-record="${esc(r.id)}" data-entry="${esc(e.id)}">Corregir</button></td></tr>`).join('')}</tbody></table></div>`}
+function renderResult(r,target){const i=total(r),done=complete(r),adjusted=entriesOf(r).some(e=>e.audit?.length);target.innerHTML=`<div class="result-summary-scroll"><div class="result-summary">${[['Fecha',esc(r.fecha)],['Hora de inicio',esc(startTime(r))],['Hora de fin',esc(endTime(r))],['Parada total'+(adjusted?' (corregida)':''),fmtD(i)+' min'],['Actividades realizadas',entriesOf(r).filter(e=>e.type!=='Incidencia'&&e.status!=='Omitida').length],['Esperas e incidencias',fmtD(incidents(r))+' min']].map(([k,v])=>`<div class="kpi"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}</div></div>${omittedCount(r)?`<div class="banner warn omitted-summary"><b>✕ Actividades omitidas: ${omittedCount(r)}</b></div>`:!done?'<div class="banner warn"><b>Medición incompleta: revisar registro anterior</b></div>':''}${r.origen==='Simulado'?'<span class="pill p-warn">Registro simulado</span>':r.origen==='Demo'?'<span class="pill p-warn">Demostración</span>':''}${CFG.compare?`<p class="note">Meta de esta medición: ${fmtD(r.meta||CFG.meta)} min · ${i<=(r.meta||CFG.meta)?'Dentro de la meta':'Supera la meta'}</p>`:''}<div class="row" style="justify-content:space-between;margin-bottom:16px"><h2 style="margin:0">Detalle por actividad</h2>${target.id==='result'?'<button class="btn primary" id="new">Finalizar y guardar medición</button>':''}</div>${resultTable(r)}`;const newButton=target.querySelector('#new');if(newButton)newButton.onclick=finalizeReview;target.querySelectorAll('[data-edit-record]').forEach(b=>b.onclick=()=>correct(r,b.dataset.entry,async()=>{await saveRecord(r);renderResult(r,target)}))}
+
+async function finalizeReview(){
+ const dialog=$('#completionDialog');if(dialog.open)return;
+ historyHighlightId=lastId;$('#new').disabled=true;try{const record=REG.find(r=>r.id===lastId);if(record)await saveRecord(record)}catch(error){$('#new').disabled=false;toast(error.message);return}dialog.showModal();$('#appMain').classList.add('finalizing');
+ setTimeout(()=>{
+  if(dialog.open)dialog.close();$('#appMain').classList.remove('finalizing');
+  if(!signedIn)return;
+  $('#plan').style.minHeight='';renderDraft();stage(1);$('#hOrig').value='';view('hist');
+  $('#appMain').classList.add('returning');
+  const row=$$('#histTable [data-record-id]').find(el=>el.dataset.recordId===historyHighlightId);
+  if(row){row.scrollIntoView({block:'center',behavior:'instant'});row.querySelector('[data-detail]').focus({preventScroll:true})}
+  else window.scrollTo({top:0,behavior:'instant'});
+  setTimeout(()=>$('#appMain').classList.remove('returning'),350);
+ },1400);
+}
+$('#completionDialog').addEventListener('cancel',e=>e.preventDefault());
+function measurementTimestamp(r){
+ if(Number.isFinite(r.end))return r.end;
+ if(Number.isFinite(r.start))return r.start;
+ const time=r.horaFin||r.horaInicio||r.hora||'00:00:00';
+ const value=Date.parse(`${r.fecha}T${time}-05:00`);return Number.isFinite(value)?value:0;
+}
+function historyRows(){return REG.filter(r=>(!$('#hOrig').value||r.origen===$('#hOrig').value)).reverse().sort((a,b)=>measurementTimestamp(b)-measurementTimestamp(a))}
+function renderHist(){$('#histTable').innerHTML=`<thead><tr><th>Fecha</th><th>Hora de inicio</th><th>Hora de fin</th><th class="num">Parada (min)</th><th>Medición</th><th>Actividades omitidas</th><th>Origen</th><th></th></tr></thead><tbody>${historyRows().map(r=>`<tr data-record-id="${esc(r.id)}" class="${r.id===historyHighlightId?'new-measurement':''}"><td>${esc(r.fecha)}${r.id===historyHighlightId?'<span class="new-record-label">Recién guardada</span>':''}</td><td>${esc(startTime(r))}</td><td>${esc(endTime(r))}</td><td class="num">${fmtD(total(r))}</td><td>${omittedCount(r)?'Con omisiones':complete(r)?'Completa':'Incompleta'}</td><td>${omittedCount(r)?`<span class="omitted-label">✕ ${omittedCount(r)} omitidas</span>`:'0'}</td><td>${esc(r.origen)}</td><td><button class="btn" data-detail="${esc(r.id)}">Ver detalle</button> <button class="btn danger" data-delete="${esc(r.id)}">Borrar</button></td></tr>`).join('')||'<tr><td colspan="8" class="empty">No hay mediciones con estos filtros.</td></tr>'}</tbody>`;$$('[data-detail]').forEach(b=>b.onclick=()=>{detailId=b.dataset.detail;renderResult(REG.find(r=>r.id===detailId),$('#detailBody'));$('#detail').showModal()});$$('[data-delete]').forEach(b=>b.onclick=()=>ask('Borrar medición','Esta acción elimina la medición seleccionada del historial.','',async()=>{await api('/api/records/'+encodeURIComponent(b.dataset.delete),'DELETE',{});REG=REG.filter(r=>r.id!==b.dataset.delete);renderHist()}))}
+$('#closeDetail').onclick=()=>{$('#detail').close();renderHist()};['hOrig'].forEach(id=>$('#'+id).oninput=renderHist);
+function exportRows(){return [['Id','Fecha','Hora de inicio','Hora de fin','Origen','Medicion completa','Actividades omitidas','Actividad','Tipo','Estado','Duracion (min)','Nota','Correcciones','Parada total (min)','Parada original (min)','Preparacion externa (min)'],...historyRows().flatMap(r=>entriesOf(r).map(e=>[r.id,r.fecha,startTime(r),endTime(r),r.origen,complete(r)?'Si':'No',omittedCount(r),e.name,e.type,e.status,e.minutes,e.note||'',JSON.stringify(e.audit||[]),total(r),r.measuredTotal??'',r.external??(r.t?.[0]||0)+(r.t?.[1]||0)]))]}
+function download(blob,name){const a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)}
+$('#csv').onclick=()=>{const safe=x=>typeof x==='string'&&/^[=+@\-\t\r]/.test(x)?"'"+x:x;const data=exportRows().map(row=>row.map(x=>'"'+String(safe(x)).replace(/"/g,'""')+'"').join(',')).join('\r\n');download(new Blob(['\uFEFF'+data],{type:'text/csv;charset=utf-8'}),'Mediciones_SMED.csv')};
+$('#xlsx').onclick=()=>{if(!window.XLSX){toast('Excel no está disponible. Usa Exportar CSV.');return}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(exportRows()),'Actividades');XLSX.writeFile(wb,'Mediciones_SMED.xlsx')};
+function renderDash(){const origin=$('#analysisOrigin').value;const filtered=REG.filter(r=>r.origen!=='Demo'&&(!origin||r.origen===origin));const data=filtered.filter(complete);const n=data.length,values=data.map(total),avg=n?values.reduce((a,b)=>a+b,0)/n:0;const k=[['Mediciones analizadas',n],['Parada promedio',n?fmtD(avg)+' min':'—'],['Rango de parada',n?fmtD(Math.min(...values))+' – '+fmtD(Math.max(...values))+' min':'—'],['Incidencias promedio',n?fmtD(data.reduce((a,r)=>a+incidents(r),0)/n)+' min':'—']];$('#dashKpis').innerHTML=k.map(([a,b])=>`<div class="kpi"><div class="k">${a}</div><div class="v">${b}</div></div>`).join('');const groups=new Map();data.forEach(r=>{const per=new Map();entriesOf(r).filter(e=>e.type!=='Incidencia'&&e.status!=='Omitida').forEach(e=>{const key=e.name.trim().toLocaleLowerCase();const item=per.get(key)||{name:e.name,minutes:0};item.minutes+=e.minutes;per.set(key,item)});per.forEach((a,key)=>{const group=groups.get(key)||{name:a.name,values:[]};group.values.push(a.minutes);groups.set(key,group)})});const stats=[...groups.values()].map(g=>({...g,avg:g.values.reduce((a,b)=>a+b,0)/g.values.length,min:Math.min(...g.values),max:Math.max(...g.values)})).sort((a,b)=>b.avg-a.avg);const mx=Math.max(1,...stats.map(s=>s.avg));$('#chart1').innerHTML=stats.length?stats.slice(0,8).map(s=>`<div class="chart-row"><span>${esc(s.name)}</span><div class="bar"><i style="width:${s.avg/mx*100}%"></i></div><span>${fmtD(s.avg)} min</span></div>`).join(''):'<p class="empty">No hay mediciones para estos filtros.</p>';$('#chart2').innerHTML=`<thead><tr><th>Actividad</th><th class="num">Mediciones</th><th class="num">Promedio</th><th class="num">Mín.</th><th class="num">Máx.</th></tr></thead><tbody>${stats.map(s=>`<tr><td>${esc(s.name)}</td><td class="num">${s.values.length}</td><td class="num">${fmtD(s.avg)}</td><td class="num">${fmtD(s.min)}</td><td class="num">${fmtD(s.max)}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Sin datos</td></tr>'}</tbody>`}
+
+$('#analysisOrigin').onchange=renderDash;
+$('#saveConf').onclick=async()=>{const m=Number($('#cMeta').value);if(!Number.isFinite(m)||m<=0){toast('Escribe una meta mayor que cero.');return}try{CFG=await api('/api/config','POST',{meta:m,compare:$('#cCompare').checked,demo:$('#cDemo').checked});save(K_CFG,CFG);toast('Configuración guardada.');if(RUN.phase===1)renderDraft()}catch(error){toast(error.message)}};
+$('#reset').onclick=()=>ask('Restablecer simulaciones','Se renovarán los 24 registros simulados. Las mediciones de planta y piloto se conservan.','',async()=>{await api('/api/records/seed','POST',{});await refreshRecords();toast('Registros simulados restablecidos.')});
+
+document.addEventListener('keydown',e=>{if(signedIn&&RUN.phase===2&&!$('#v-nuevo').hidden&&!RUN.incident&&!e.repeat&&e.code==='Space'&&!e.target.closest('input,select,textarea,button')&&!$$('dialog[open]').length){e.preventDefault();advance()}});
+
+let signedIn=false,loginBusy=false;
+function clearSession(){try{sessionStorage.removeItem('smedTroq.initialPlanLoaded.v1')}catch{}}
+function renderAccess(){
+ signedIn=!!backendState.user;
+ $('#loginScreen').hidden=signedIn;$('#appMain').hidden=!signedIn;$('#appNav').hidden=!signedIn;$('#account').hidden=!signedIn;
+ $('#accountName').textContent=signedIn?'Supervisor · '+backendState.user.username:'';
+ const first=!backendState.configured;$('#loginTitle').textContent=first?'Crear acceso de supervisor':'Iniciar sesión';
+ $('#loginIntro').textContent=first?'Configura el acceso del supervisor en el servidor.':'Ingresa para medir y revisar los tiempos de setup.';
+ $('#confirmPasswordField').hidden=!first;$('#confirmPassword').required=first;
+ $('#loginPassword').minLength=8;$('#loginPassword').autocomplete=first?'new-password':'current-password';
+ $('#loginSubmit').textContent=first?'Crear acceso e ingresar':'Ingresar';$('#loginRunning').hidden=RUN.phase!==2;
+ if(signedIn){
+  let firstEntry=true;try{firstEntry=!sessionStorage.getItem('smedTroq.initialPlanLoaded.v1')}catch{}
+  if(firstEntry){if(RUN.phase===1&&!RUN.plan.length){RUN.plan=defaultPlan();persist()}try{sessionStorage.setItem('smedTroq.initialPlanLoaded.v1','true')}catch{}}
+  view('nuevo');renderDraft();if(RUN.phase===2){renderRun();stage(2)}else stage(1);
+ }
+}
+async function initializeBackend(){
+ $('#loginSubmit').disabled=true;
+ try{backendState=await api('/api/auth/status');if(backendState.user)await loadBackendData();renderAccess()}
+ catch(error){backendState.user=null;renderAccess();$('#loginError').textContent=error.message}
+ finally{$('#loginSubmit').disabled=false}
+}
+$('#showPassword').onclick=()=>{const show=$('#loginPassword').type==='password';$('#loginPassword').type=show?'text':'password';$('#confirmPassword').type=show?'text':'password';$('#showPassword').textContent=show?'Ocultar':'Mostrar';$('#showPassword').setAttribute('aria-label',show?'Ocultar contraseña':'Mostrar contraseña');$('#showPassword').setAttribute('aria-pressed',show)};
+$('#loginForm').onsubmit=async e=>{
+ e.preventDefault();if(loginBusy)return;$('#loginError').textContent='';
+ const username=$('#loginUser').value.trim(),password=$('#loginPassword').value,first=!backendState.configured;
+ if(username.length<3){$('#loginError').textContent='Escribe un usuario de al menos 3 caracteres.';return}
+ if(first&&(password.length<8||password!==$('#confirmPassword').value)){$('#loginError').textContent=password.length<8?'Usa una contraseña de al menos 8 caracteres.':'Las contraseñas no coinciden.';return}
+ loginBusy=true;$('#loginSubmit').disabled=true;$('#loginSubmit').textContent='Verificando…';
+ try{
+  const result=await api(first?'/api/auth/setup':'/api/auth/login','POST',{username,password});
+  backendState.configured=true;backendState.user=result.user;await loadBackendData();
+  $('#loginForm').reset();$('#loginPassword').type='password';$('#confirmPassword').type='password';$('#showPassword').textContent='Mostrar';$('#showPassword').setAttribute('aria-label','Mostrar contraseña');$('#showPassword').setAttribute('aria-pressed','false');renderAccess();$('#appNav .tab').focus();
+ }catch(error){backendState.user=null;try{backendState=await api('/api/auth/status');backendState.user=null}catch{}renderAccess();$('#loginError').textContent=error.message}
+ finally{loginBusy=false;$('#loginSubmit').disabled=false;$('#loginSubmit').textContent=backendState.configured?'Ingresar':'Crear acceso e ingresar'}
+};
+$('#logout').onclick=async()=>{
+ $('#logout').disabled=true;try{persist();await api('/api/auth/logout','POST',{});backendState.user=null;REG=[];clearSession();$$('dialog[open]').forEach(d=>d.close());promptAction=null;$('#loginForm').reset();$('#loginError').textContent='';renderAccess();$('#loginUser').focus()}
+ catch(error){toast(error.message)}finally{$('#logout').disabled=false}
+};
+initializeBackend();
+
+</script></body></html>

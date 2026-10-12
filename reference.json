@@ -1,0 +1,72 @@
+[
+  {
+    "id": "P3",
+    "name": "Despejar zona de trabajo",
+    "base": 0.84
+  },
+  {
+    "id": "P4",
+    "name": "Revisar guardas y confirmar zona libre",
+    "base": 0.99
+  },
+  {
+    "id": "P5",
+    "name": "Comprobar paro de emergencia",
+    "base": 0.49
+  },
+  {
+    "id": "P6",
+    "name": "Deslizar troquel hasta el tope",
+    "base": 9.85
+  },
+  {
+    "id": "P7",
+    "name": "Fijar con prensas de acción rápida",
+    "base": 2.29
+  },
+  {
+    "id": "P8",
+    "name": "Verificar holguras",
+    "base": 1.95
+  },
+  {
+    "id": "P9",
+    "name": "Colocar paquete de láminas en la mesa",
+    "base": 2.17
+  },
+  {
+    "id": "P10",
+    "name": "Alinear láminas con guías de riel graduado",
+    "base": 3.86
+  },
+  {
+    "id": "P11",
+    "name": "Probar avance del material",
+    "base": 3.78
+  },
+  {
+    "id": "P12",
+    "name": "Ajustar presión, velocidad y registro",
+    "base": 9.13
+  },
+  {
+    "id": "P13",
+    "name": "Cortar pieza de prueba y verificar con plantilla",
+    "base": 2.23
+  },
+  {
+    "id": "P14",
+    "name": "Confirmar condiciones seguras",
+    "base": 1.0
+  },
+  {
+    "id": "P15",
+    "name": "Ejecutar hojas de prueba y verificar con plantilla",
+    "base": 9.27
+  },
+  {
+    "id": "P16",
+    "name": "Aprobar y pasar a producción",
+    "base": 0.0
+  }
+]
