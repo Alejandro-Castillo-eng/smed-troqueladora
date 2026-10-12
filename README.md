@@ -4,7 +4,23 @@ Aplicación para registrar el tiempo total de setup y la duración de sus activi
 Incluye acceso del supervisor, actividades editables, repeticiones, omisiones,
 correcciones, historial y análisis con exportación a CSV y Excel.
 
-## Ejecutar
+## Aplicación publicada en GitHub Pages
+
+https://alejandro-castillo-eng.github.io/smed-troqueladora/
+
+Usuario: **usuario** · Contraseña: **artefacto**.
+
+El workflow `Publicar aplicación en GitHub Pages` publica automáticamente al cambiar
+la rama `main`. El deployment aparece en el entorno `github-pages` del repositorio.
+La versión de revisión mantiene las pantallas y los 24 ejemplos, pero guarda las
+mediciones en el navegador de cada visitante: no comparte registros entre equipos.
+Su acceso es una demostración de interfaz, no autenticación de servidor.
+
+GitHub Pages no ejecuta Python. El backend con SQLite queda disponible para ejecución
+local; el script `scripts/build_pages.py` prepara por separado la versión estática.
+Solo se publican HTML, JavaScript y ejemplos simulados, sin base de datos ni sesiones.
+
+## Ejecutar el backend local
 
 Requiere Python 3.10 o posterior. No hay paquetes que instalar.
 

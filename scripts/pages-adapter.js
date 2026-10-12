@@ -1,0 +1,39 @@
+/* Adaptador de revisión para GitHub Pages: almacenamiento del navegador, sin servidor. */
+(() => {
+ const KEY='smed.pages.database.v1',SESSION='smed.pages.supervisor.v1';
+ const copy=x=>structuredClone(x);
+ const read=()=>{try{return JSON.parse(localStorage.getItem(KEY))}catch{return null}};
+ const write=value=>{try{localStorage.setItem(KEY,JSON.stringify(value))}catch{throw new Error('No se pudieron guardar los datos en este navegador. Exporta una copia antes de cerrar.')}};
+ const user=()=>sessionStorage.getItem(SESSION)==='usuario'?{username:'usuario'}:null;
+ const fail=message=>{throw new Error(message)};
+ const samples=async()=>{const response=await fetch('./simulated-records.json');if(!response.ok)fail('No se pudieron cargar los ejemplos.');return response.json()};
+ async function db(){let value=read();if(!value){const records=await samples();value={records:records.map(r=>({...r,_version:1})),config:{meta:33.6,demo:false,compare:false}};write(value)}return value}
+ window.smedPagesAPI=async(path,method='GET',body={})=>{
+  if(path==='/api/auth/status')return {configured:true,user:user(),databaseId:'github-pages-review-v1'};
+  if(path==='/api/auth/login'&&method==='POST'){if(body.username!=='usuario'||body.password!=='artefacto')fail('Usuario o contraseña incorrectos.');sessionStorage.setItem(SESSION,'usuario');return{user:user()}}
+  if(path==='/api/auth/logout'&&method==='POST'){sessionStorage.removeItem(SESSION);return{ok:true}}
+  if(!user())fail('Inicia sesión para acceder a los registros.');
+  const state=await db();
+  if(path==='/api/config'){
+   if(method==='POST'){if(!Number.isFinite(body.meta)||body.meta<=0)fail('Meta inválida.');state.config=copy(body);write(state)}return copy(state.config);
+  }
+  if(path==='/api/records'&&method==='GET')return{records:copy(state.records)};
+  if(path==='/api/records/import'&&method==='POST'){
+   let count=0;for(const r of body.records||[]){if(!state.records.some(e=>e.id===r.id)){state.records.push({...copy(r),_version:1});count++}}write(state);return{imported:count};
+  }
+  if(path==='/api/records/seed'&&method==='POST'){
+   const records=await samples();state.records=state.records.filter(r=>r.origen!=='Simulado').concat(records.map(r=>({...r,_version:1})));write(state);return{count:records.length};
+  }
+  if(path==='/api/records'&&method==='POST'){
+   if(!body.id||!Array.isArray(body.entries)||!body.entries.length)fail('Registro inválido.');
+   for(const e of body.entries)if(!Number.isFinite(e.minutes)||e.minutes<0)fail('Duración inválida.');
+   const record=copy(body),version=record._version||0;delete record._version;
+   const index=state.records.findIndex(r=>r.id===record.id);let nextVersion=1;
+   if(index>=0){const previous=copy(state.records[index]),oldVersion=previous._version;delete previous._version;if(JSON.stringify(previous)===JSON.stringify(record))return copy(state.records[index]);if(version!==oldVersion)fail('Esta medición cambió en otra pestaña. Actualiza el historial antes de corregirla.');nextVersion=oldVersion+1}
+   else if(version)fail('La medición fue eliminada en otra pestaña.');
+   const saved={...record,_version:nextVersion};if(index>=0)state.records[index]=saved;else state.records.push(saved);write(state);return copy(saved);
+  }
+  if(path.startsWith('/api/records/')&&method==='DELETE'){const id=decodeURIComponent(path.slice('/api/records/'.length));state.records=state.records.filter(r=>r.id!==id);write(state);return{ok:true}}
+  fail('Operación no disponible en la versión de revisión.');
+ };
+})();
