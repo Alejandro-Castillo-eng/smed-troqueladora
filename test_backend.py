@@ -22,7 +22,7 @@ class BackendTests(unittest.TestCase):
             with (client or self.client).open(req) as r:return r.status,json.load(r)
         except HTTPError as e:return e.code,json.load(e)
     def login(self):
-        code,_=self.request('/api/auth/setup','POST',{'username':'supervisor.test','password':'Testing123!'});self.assertEqual(code,200)
+        code,_=self.request('/api/auth/login','POST',{'username':'usuario','password':'artefacto'});self.assertEqual(code,200)
     def test_auth_and_private_files(self):
         self.assertEqual(self.request('/api/records')[0],401)
         self.assertEqual(self.request('/data/smed.sqlite3')[0],404)
@@ -31,8 +31,8 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(self.request('/api/records','POST',{},origin='https://otro.example')[0],403)
         self.request('/api/auth/logout','POST',{})
         self.assertEqual(self.request('/api/records')[0],401)
-        self.assertEqual(self.request('/api/auth/login','POST',{'username':'supervisor.test','password':'incorrecta!'})[0],401)
-        self.assertEqual(self.request('/api/auth/login','POST',{'username':'supervisor.test','password':'Testing123!'})[0],200)
+        self.assertEqual(self.request('/api/auth/login','POST',{'username':'usuario','password':'incorrecta!'})[0],401)
+        self.assertEqual(self.request('/api/auth/login','POST',{'username':'usuario','password':'artefacto'})[0],200)
     def test_records_persistence_idempotency_conflicts_and_seed(self):
         self.login();records=self.request('/api/records')[1]['records'];self.assertEqual(len(records),24)
         self.assertTrue(all(r['origen']=='Simulado' for r in records));self.assertTrue(any(any(e['status']=='Omitida' for e in r['entries']) for r in records))

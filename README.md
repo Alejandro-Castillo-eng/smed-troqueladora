@@ -12,8 +12,9 @@ Requiere Python 3.10 o posterior. No hay paquetes que instalar.
 python server.py
 ```
 
-Abre http://127.0.0.1:8080 y crea el usuario y contraseña del supervisor la primera
-vez. Después se utiliza esa misma cuenta. La autenticación se valida en el servidor,
+Abre http://127.0.0.1:8080. El acceso de revisión es **usuario: `usuario`** y
+**contraseña: `artefacto`**. También se muestran junto al inicio de sesión para
+facilitar la revisión del profesor. La autenticación se valida en el servidor,
 con contraseña derivada mediante PBKDF2 y sesión en cookie HttpOnly.
 
 ## Almacenamiento
@@ -63,5 +64,5 @@ importación, correcciones concurrentes, guardado idempotente y renovación de e
 Este servidor está pensado para uso local o una prueba en planta. GitHub almacena
 el código; no ejecuta el backend. Para acceso por Internet se necesita un host con
 Python, disco persistente y HTTPS; con HTTPS establece `SMED_SECURE_COOKIE=1`.
-El primer supervisor se crea al iniciar la instalación. No hay registro público de
+El acceso de revisión se configura al iniciar la instalación. No hay registro público de
 más usuarios, recuperación de contraseña por correo ni despliegue automático.

