@@ -60,7 +60,7 @@ test('incluye actividades del plan sin entrada y distingue omisiones de tiempos 
   assert.deepEqual(result[1].slice(1, 5), ['No se registró', 0, 'No se registró', 1.2]);
 });
 
-test('admite registros del prototipo anterior y filtros sin resultados', () => {
+test('admite registros del prototipo anterior y un historial vacío', () => {
   const result = rows([{ fecha: '2026-09-30', origen: 'Piloto', t: Array.from({ length: 15 }, (_, i) => i), exc: 2 }]);
   assert.equal(result.length, 2);
   assert.equal(result[0][1], '1. Despejar zona de trabajo (min)');
@@ -68,11 +68,10 @@ test('admite registros del prototipo anterior y filtros sin resultados', () => {
   assert.deepEqual(rows([]), [['Fecha', 'Hora de inicio', 'Hora de fin', 'Origen', 'Parada total (min)']]);
 });
 
-test('el botón Excel respeta el filtro de origen y conserva el detalle', () => {
+test('el botón Excel exporta todos los orígenes y conserva el detalle', () => {
   const { context, element } = app();
-  context.records = [record([activity('Preparar', 2)], { id: 'A' }), record([activity('Solo simulado', 4)], { id: 'B', origen: 'Simulado' })];
+  context.records = [record([activity('Preparar', 2)], { id: 'A' }), record([activity('Solo simulado', 4)], { id: 'B', origen: 'Simulado', fecha: '2026-10-18' })];
   vm.runInContext('REG = records', context);
-  element('#hOrig').value = 'Planta';
   let saved;
   const XLSX = {
     utils: {
@@ -85,8 +84,10 @@ test('el botón Excel respeta el filtro de origen y conserva el detalle', () => 
   context.XLSX = context.window.XLSX = XLSX;
   element('#xlsx').onclick();
   assert.equal(saved.name, 'Mediciones_SMED.xlsx');
-  assert.equal(saved.book.Mediciones.rows.length, 2);
+  assert.equal(saved.book.Mediciones.rows.length, 3);
   assert.equal(saved.book.Mediciones.rows[0][1], '1. Preparar (min)');
   assert.equal(saved.book.Mediciones.rows[1][1], 2);
+  assert.deepEqual(saved.book.Mediciones.rows[2].slice(0, 3), ['2026-10-18', 'No se registró', 4]);
   assert.equal(saved.book.Detalle.rows[1][0], 'A');
+  assert.equal(saved.book.Detalle.rows[2][0], 'B');
 });

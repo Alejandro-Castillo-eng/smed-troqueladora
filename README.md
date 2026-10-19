@@ -71,7 +71,7 @@ node --test test_excel_export.cjs
 
 ## Exportar Excel
 
-Desde Historial, **Exportar Excel** descarga las mediciones del filtro de origen actual.
+Desde Historial, **Exportar Excel** descarga todas las mediciones guardadas.
 La hoja **Mediciones** contiene una fila por setup: primero la fecha y después una
 columna por actividad, con número, nombre y duración en minutos. Reúne las actividades
 de todos los planes exportados y las numera en su orden de aparición; los nombres
