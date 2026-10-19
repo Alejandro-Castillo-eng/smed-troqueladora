@@ -49,7 +49,7 @@ En el primer arranque se generan **24 registros identificados como Simulado**,
 repartidos entre varios días y horas. Incluyen actividades normales, repeticiones
 y omisiones. Son ejemplos inventados, no mediciones reales de planta.
 
-El análisis permite elegir Planta, Simulado o Piloto. Los datos Demo se excluyen;
+El análisis reúne automáticamente Planta, Simulado y Piloto. Los datos Demo se excluyen;
 las mediciones con omisiones se conservan en el historial y su detalle. El promedio
 por actividad utiliza las mediciones completas. El botón para restablecer simulados
 renueva solo estos ejemplos y conserva las mediciones de planta y piloto.
