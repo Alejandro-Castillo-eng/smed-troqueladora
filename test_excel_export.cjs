@@ -1,27 +1,7 @@
 const assert = require('node:assert/strict');
-const { readFileSync } = require('node:fs');
 const { test } = require('node:test');
 const vm = require('node:vm');
-
-// Cargar el script real de la aplicación sin iniciar servicios ni temporizadores.
-function app() {
-  const elements = new Map();
-  const element = selector => {
-    if (!elements.has(selector)) elements.set(selector, { value: '', addEventListener() {} });
-    return elements.get(selector);
-  };
-  const context = vm.createContext({
-    document: { querySelector: element, querySelectorAll: () => [], addEventListener() {} },
-    window: { addEventListener() {} },
-    localStorage: { getItem: () => null, setItem() {} },
-    setInterval() {}, setTimeout() {}, clearTimeout() {}, AbortController,
-    fetch: () => new Promise(() => {}),
-  });
-  const html = readFileSync(`${__dirname}/index.html`, 'utf8');
-  const script = html.match(/<script>\s*([\s\S]*?)<\/script>/)[1];
-  vm.runInContext(script, context);
-  return { context, element, run: code => JSON.parse(JSON.stringify(vm.runInContext(code, context))) };
-}
+const app = require('./tests/app.cjs');
 
 const activity = (name, minutes, extra = {}) => ({ name, minutes, type: 'Actividad', status: 'Registrada', ...extra });
 const record = (entries, extra = {}) => ({ fecha: '2026-10-19', origen: 'Planta', entries, ...extra });

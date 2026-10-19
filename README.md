@@ -33,6 +33,13 @@ Abre http://127.0.0.1:8080. El acceso de revisión es **usuario: `usuario`** y
 facilitar la revisión del profesor. La autenticación se valida en el servidor,
 con contraseña derivada mediante PBKDF2 y sesión en cookie HttpOnly.
 
+## Terminar una medición
+
+Durante la medición, **Terminar medición** detiene el tiempo y guarda lo registrado
+hasta ese momento. Incluye la actividad actual y marca las pendientes como omitidas,
+con cero minutos. Se abre el resultado para revisarlo. Si falla el guardado, se
+conservan los datos y la hora de fin para reintentar, incluso después de recargar.
+
 ## Almacenamiento
 
 SQLite guarda las mediciones, correcciones, configuración y cuenta en
@@ -63,10 +70,11 @@ python -m unittest test_backend -v
 Las pruebas utilizan una base temporal y verifican acceso, persistencia, validación,
 importación, correcciones concurrentes, guardado idempotente y renovación de ejemplos.
 
-La exportación Excel se comprueba con Node.js 18 o posterior, sin instalar paquetes:
+La medición y la exportación Excel se comprueban con Node.js 18 o posterior,
+sin instalar paquetes:
 
 ```sh
-node --test test_excel_export.cjs
+node --test test_excel_export.cjs test_measurement.cjs
 ```
 
 ## Exportar Excel
