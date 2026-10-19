@@ -63,6 +63,26 @@ python -m unittest test_backend -v
 Las pruebas utilizan una base temporal y verifican acceso, persistencia, validación,
 importación, correcciones concurrentes, guardado idempotente y renovación de ejemplos.
 
+La exportación Excel se comprueba con Node.js 18 o posterior, sin instalar paquetes:
+
+```sh
+node --test test_excel_export.cjs
+```
+
+## Exportar Excel
+
+Desde Historial, **Exportar Excel** descarga las mediciones del filtro de origen actual.
+La hoja **Mediciones** contiene una fila por setup: primero la fecha y después una
+columna por actividad, con número, nombre y duración en minutos. Reúne las actividades
+de todos los planes exportados y las numera en su orden de aparición; los nombres
+iguales comparten columna aunque cambien de posición o identificador entre planes.
+Las repeticiones registradas se suman y las actividades ausentes u omitidas muestran
+**No se registró**. Un tiempo registrado de cero se conserva como número.
+
+Al final aparecen las horas, el origen y la parada total. La hoja **Detalle** conserva
+el desglose por entrada, incluidas incidencias, omisiones y correcciones. La parada
+total incluye también el tiempo transcurrido en omisiones e incidencias.
+
 ## API
 
 - `GET /api/auth/status`: estado de configuración y sesión.
