@@ -160,11 +160,13 @@ class Handler(BaseHTTPRequestHandler):
             self.user(db,required=True)
             if path=='/api/config' and method=='GET':
                 row=db.execute("SELECT value FROM metadata WHERE key='config'").fetchone()
-                self.respond(json.loads(row['value']) if row else {'meta':33.6,'demo':False,'compare':False});return
+                self.respond(json.loads(row['value']) if row else {'meta':33.6,'demo':False,'compare':False,'externas':[]});return
             if path=='/api/config' and method=='POST':
                 value=self.body();meta=value.get('meta')
                 if isinstance(meta,bool) or not isinstance(meta,(int,float)) or not math.isfinite(meta) or not 0<meta<=100000: raise APIError('Meta inválida.')
-                value={'meta':meta,'demo':bool(value.get('demo')),'compare':bool(value.get('compare'))}
+                externas=value.get('externas',[])
+                if not isinstance(externas,list) or len(externas)>200 or any(not isinstance(x,str) or not 1<=len(x)<=180 for x in externas): raise APIError('Actividades externas inválidas.')
+                value={'meta':meta,'demo':bool(value.get('demo')),'compare':bool(value.get('compare')),'externas':list(dict.fromkeys(externas))}
                 db.execute("INSERT INTO metadata VALUES('config',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(json.dumps(value),))
                 db.commit();self.respond(value);return
             if path=='/api/records' and method=='GET':
