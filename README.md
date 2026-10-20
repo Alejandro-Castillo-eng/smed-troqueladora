@@ -61,6 +61,18 @@ las mediciones con omisiones se conservan en el historial y su detalle. El prome
 por actividad utiliza las mediciones completas. El botón para restablecer simulados
 renueva solo estos ejemplos y conserva las mediciones de planta y piloto.
 
+## Análisis
+
+- **Evolución de la parada:** parada total de cada medición completa frente a la meta,
+  con el porcentaje de mediciones que la cumplen.
+- **Pareto de actividades:** actividades ordenadas por tiempo promedio con el porcentaje
+  acumulado; destaca las que suman el 80 % del tiempo.
+- **Actividades internas y externas:** al marcar las actividades que podrían prepararse
+  con la máquina en marcha, estima la nueva parada y la compara con la meta. La selección
+  se guarda en la configuración compartida.
+- **Variación por actividad:** promedio, mínimo, máximo y coeficiente de variación;
+  más de 25 % indica una actividad poco estandarizada.
+
 ## Pruebas
 
 ```powershell

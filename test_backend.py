@@ -53,7 +53,9 @@ class BackendTests(unittest.TestCase):
     def test_import_and_configuration(self):
         self.login();record=server.simulated_records()[0];record['id']='IMPORT-TEST'
         for count in (1,0):self.assertEqual(self.request('/api/records/import','POST',{'records':[record]})[1]['imported'],count)
-        cfg={'meta':40,'demo':False,'compare':True};self.assertEqual(self.request('/api/config','POST',cfg)[1],cfg);self.assertEqual(self.request('/api/config')[1],cfg)
+        cfg={'meta':40,'demo':False,'compare':True,'externas':['colocar paquete de láminas en la mesa']};self.assertEqual(self.request('/api/config','POST',cfg)[1],cfg);self.assertEqual(self.request('/api/config')[1],cfg)
+        self.assertEqual(self.request('/api/config','POST',{'meta':40})[1]['externas'],[])
         self.assertEqual(self.request('/api/config','POST',{'meta':-5})[0],400)
+        self.assertEqual(self.request('/api/config','POST',{'meta':40,'externas':'todas'})[0],400)
 
 if __name__=='__main__':unittest.main()
