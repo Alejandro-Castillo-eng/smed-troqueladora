@@ -68,6 +68,18 @@ test('el botón Excel exporta todos los orígenes y conserva el detalle', () => 
   assert.equal(saved.book.Mediciones.rows[0][1], '1. Preparar (min)');
   assert.equal(saved.book.Mediciones.rows[1][1], 2);
   assert.deepEqual(saved.book.Mediciones.rows[2].slice(0, 3), ['2026-10-18', 'No se registró', 4]);
-  assert.equal(saved.book.Detalle.rows[1][0], 'A');
-  assert.equal(saved.book.Detalle.rows[2][0], 'B');
+  assert.deepEqual(saved.book.Detalle.rows[0], ['Fecha', 'Hora de inicio', 'Hora de fin', 'Parada (min)', 'Medición', 'Actividades omitidas']);
+  assert.deepEqual(saved.book.Detalle.rows.slice(1).map(row => row[0]), ['2026-10-19', '2026-10-18']);
+});
+
+test('la hoja Detalle reproduce la tabla del historial', () => {
+  const { context, run } = app();
+  context.records = [
+    record([activity('Preparar', 0.0655), activity('Ajustar', 0.01451667), activity('Probar', 0, { status: 'Omitida' }), activity('Aprobar', 0, { status: 'Omitida' })], { horaInicio: '23:39:57', horaFin: '23:40:02' }),
+    record([activity('Preparar', 20), activity('Ajustar', 33.666)], { fecha: '2026-10-11', horaInicio: '14:11:00', horaFin: '15:04:40' }),
+  ];
+  assert.deepEqual(run('historyExportRows(records)').slice(1), [
+    ['2026-10-19', '23:39:57', '23:40:02', 0.08, 'Con omisiones', 2],
+    ['2026-10-11', '14:11:00', '15:04:40', 53.67, 'Completa', 0],
+  ]);
 });

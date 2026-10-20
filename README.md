@@ -87,9 +87,11 @@ iguales comparten columna aunque cambien de posición o identificador entre plan
 Las repeticiones registradas se suman y las actividades ausentes u omitidas muestran
 **No se registró**. Un tiempo registrado de cero se conserva como número.
 
-Al final aparecen las horas, el origen y la parada total. La hoja **Detalle** conserva
-el desglose por entrada, incluidas incidencias, omisiones y correcciones. La parada
-total incluye también el tiempo transcurrido en omisiones e incidencias.
+Al final aparecen las horas, el origen y la parada total. La hoja **Detalle** reproduce la tabla
+del Historial: fecha, horas de inicio y fin, parada en minutos, estado de la medición
+y número de actividades omitidas. La parada total incluye también el tiempo
+transcurrido en omisiones e incidencias. El CSV conserva el desglose por entrada,
+incluidas incidencias, omisiones y correcciones.
 
 ## API
 
