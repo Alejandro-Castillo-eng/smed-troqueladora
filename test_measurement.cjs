@@ -127,7 +127,9 @@ test('el kit de materiales se guarda con la medición e indica lo que faltaba', 
   assert.equal(record.kit.listos, 2);
   assert.equal(record.kit.total, 10);
   assert.equal(record.kit.faltantes.length, 8);
-  assert(record.kit.faltantes.includes('Dimensiones del empaque'));
+  assert(record.kit.faltantes.includes('Revisar dimensiones del empaque'));
+  assert.deepEqual(record.kit.grupos.map(g => [g.key, g.listos, g.total]), [['materiales', 1, 5], ['externas', 1, 5]]);
+  assert(record.kit.grupos[0].faltantes.includes('Herramientas de ajuste (llaves y calibrador)'));
   assert.deepEqual(state.run('RUN.kit'), {});
 });
 
