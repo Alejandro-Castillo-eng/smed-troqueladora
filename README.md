@@ -61,7 +61,8 @@ Las marcas se conservan al recargar. La parada se inicia aunque falten puntos, s
 la medición guarda, por grupo, cuántos estaban listos y cuáles faltaban, y el resultado lo muestra.
 
 El operario no ve la lista editable de actividades para no distraerse durante el cambio:
-marca la preparación externa, presiona **Iniciar parada y medición** y, al acabar,
+marca la preparación externa, presiona **Iniciar parada y medición** (arriba, en la misma
+tarjeta) y, al acabar,
 **Terminar medición**. Mientras tanto solo ve el cronómetro de la parada total. Su medición
 se guarda como **solo parada total**: entra al Historial, a la evolución y al cumplimiento
 de la meta, pero no al Pareto, a la variación ni a las columnas por actividad del Excel.
