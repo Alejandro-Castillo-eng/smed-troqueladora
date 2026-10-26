@@ -1,18 +1,21 @@
 /* Adaptador de revisión para GitHub Pages: almacenamiento del navegador, sin servidor. */
 (() => {
- const KEY='smed.pages.database.v1',SESSION='smed.pages.supervisor.v1';
+ const KEY='smed.pages.database.v1',SESSION='smed.pages.user.v1';
+ // Cuentas de revisión: el analista mide y analiza; el operario tiene su propio panel.
+ const ACCOUNTS={usuario:{password:'artefacto',role:'analista'},operario:{password:'troqueladora',role:'operario'}};
  const copy=x=>structuredClone(x);
  const read=()=>{try{return JSON.parse(localStorage.getItem(KEY))}catch{return null}};
  const write=value=>{try{localStorage.setItem(KEY,JSON.stringify(value))}catch{throw new Error('No se pudieron guardar los datos en este navegador. Exporta una copia antes de cerrar.')}};
- const user=()=>sessionStorage.getItem(SESSION)==='usuario'?{username:'usuario'}:null;
+ const user=()=>{const name=sessionStorage.getItem(SESSION);return name&&Object.hasOwn(ACCOUNTS,name)?{username:name,role:ACCOUNTS[name].role}:null};
  const fail=message=>{throw new Error(message)};
  const samples=async()=>{const response=await fetch('./simulated-records.json');if(!response.ok)fail('No se pudieron cargar los ejemplos.');return response.json()};
  async function db(){let value=read();if(!value){const records=await samples();value={records:records.map(r=>({...r,_version:1})),config:{meta:33.6,demo:false,compare:false}};write(value)}return value}
  window.smedPagesAPI=async(path,method='GET',body={})=>{
   if(path==='/api/auth/status')return {configured:true,user:user(),databaseId:'github-pages-review-v1'};
-  if(path==='/api/auth/login'&&method==='POST'){if(body.username!=='usuario'||body.password!=='artefacto')fail('Usuario o contraseña incorrectos.');sessionStorage.setItem(SESSION,'usuario');return{user:user()}}
+  if(path==='/api/auth/login'&&method==='POST'){const name=String(body.username||'').trim();if(!Object.hasOwn(ACCOUNTS,name)||ACCOUNTS[name].password!==body.password)fail('Usuario o contraseña incorrectos.');sessionStorage.setItem(SESSION,name);return{user:user()}}
   if(path==='/api/auth/logout'&&method==='POST'){sessionStorage.removeItem(SESSION);return{ok:true}}
   if(!user())fail('Inicia sesión para acceder a los registros.');
+ if(user().role!=='analista')fail('Esta sección es solo para el analista.');
   const state=await db();
   if(path==='/api/config'){
    if(method==='POST'){if(!Number.isFinite(body.meta)||body.meta<=0)fail('Meta inválida.');state.config=copy(body);write(state)}return copy(state.config);

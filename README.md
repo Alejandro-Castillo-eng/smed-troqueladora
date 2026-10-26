@@ -1,14 +1,24 @@
 # SMED · Troqueladora
 
 Aplicación para registrar el tiempo total de setup y la duración de sus actividades.
-Incluye acceso del supervisor, actividades editables, repeticiones, omisiones,
+Incluye acceso por rol (analista y operario), actividades editables, repeticiones, omisiones,
 correcciones, historial y análisis con exportación a CSV y Excel.
+
+## Usuarios y roles
+
+| Rol | Usuario | Contraseña | Opciones |
+|---|---|---|---|
+| Analista | `usuario` | `artefacto` | Medir setup, Historial, Análisis y Configuración. |
+| Operario | `operario` | `troqueladora` | Panel propio, todavía sin opciones. |
+
+Cada rol ve únicamente sus opciones. El servidor también lo exige: una sesión de
+operario recibe 403 al consultar o modificar registros y configuración.
 
 ## Aplicación publicada en GitHub Pages
 
 https://alejandro-castillo-eng.github.io/smed-troqueladora/
 
-Usuario: **usuario** · Contraseña: **artefacto**.
+Analista: **usuario** / **artefacto** · Operario: **operario** / **troqueladora**.
 
 El workflow `Publicar aplicación en GitHub Pages` publica automáticamente al cambiar
 la rama `main`. El deployment aparece en el entorno `github-pages` del repositorio.
@@ -28,10 +38,10 @@ Requiere Python 3.10 o posterior. No hay paquetes que instalar.
 python server.py
 ```
 
-Abre http://127.0.0.1:8080. El acceso de revisión es **usuario: `usuario`** y
-**contraseña: `artefacto`**. También se muestran junto al inicio de sesión para
-facilitar la revisión del profesor. La autenticación se valida en el servidor,
-con contraseña derivada mediante PBKDF2 y sesión en cookie HttpOnly.
+Abre http://127.0.0.1:8080. Los accesos de revisión del analista y del operario
+(ver la tabla de roles) se muestran junto al inicio de sesión para facilitar la
+revisión del profesor. La autenticación se valida en el servidor, con contraseña
+derivada mediante PBKDF2 y sesión en cookie HttpOnly.
 
 ## Terminar una medición
 
@@ -42,8 +52,9 @@ conservan los datos y la hora de fin para reintentar, incluso después de recarg
 
 ## Almacenamiento
 
-SQLite guarda las mediciones, correcciones, configuración y cuenta en
-`data/smed.sqlite3`. Los borradores de la medición en curso permanecen en el navegador.
+SQLite guarda las mediciones, correcciones, configuración y cuentas en
+`data/smed.sqlite3`. Una base creada con la versión anterior conserva su cuenta de
+supervisor como analista, añade el operario y cierra las sesiones abiertas. Los borradores de la medición en curso permanecen en el navegador.
 Al acceder se importan una sola vez los registros del prototipo anterior si existen
 allí; los identificadores existentes no se sobrescriben.
 
@@ -79,14 +90,14 @@ renueva solo estos ejemplos y conserva las mediciones de planta y piloto.
 python -m unittest test_backend -v
 ```
 
-Las pruebas utilizan una base temporal y verifican acceso, persistencia, validación,
+Las pruebas utilizan una base temporal y verifican acceso por rol, migración de cuentas, persistencia, validación,
 importación, correcciones concurrentes, guardado idempotente y renovación de ejemplos.
 
-La medición y la exportación Excel se comprueban con Node.js 18 o posterior,
-sin instalar paquetes:
+La medición, la exportación Excel y las pantallas de cada rol se comprueban con
+Node.js 18 o posterior, sin instalar paquetes:
 
 ```sh
-node --test test_excel_export.cjs test_measurement.cjs
+node --test test_excel_export.cjs test_measurement.cjs test_access.cjs
 ```
 
 ## Exportar Excel
@@ -107,7 +118,8 @@ incluidas incidencias, omisiones y correcciones.
 
 ## API
 
-- `GET /api/auth/status`: estado de configuración y sesión.
+- `GET /api/auth/status`: estado de configuración y sesión, con el rol del usuario.
+- El resto de rutas son solo del analista; el operario recibe 403.
 - `POST /api/auth/setup`, `/api/auth/login`, `/api/auth/logout`: acceso.
 - `GET /api/records`: historial.
 - `POST /api/records`: guardar o corregir una medición. `_version` evita sobrescribir
@@ -122,5 +134,5 @@ incluidas incidencias, omisiones y correcciones.
 Este servidor está pensado para uso local o una prueba en planta. GitHub almacena
 el código; no ejecuta el backend. Para acceso por Internet se necesita un host con
 Python, disco persistente y HTTPS; con HTTPS establece `SMED_SECURE_COOKIE=1`.
-El acceso de revisión se configura al iniciar la instalación. No hay registro público de
+Los accesos de revisión se configuran al iniciar la instalación. No hay registro público de
 más usuarios, recuperación de contraseña por correo ni despliegue automático.
