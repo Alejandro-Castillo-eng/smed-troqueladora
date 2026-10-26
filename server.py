@@ -12,6 +12,7 @@ LIMA = timezone(timedelta(hours=-5))
 MAX_BODY = 4 * 1024 * 1024
 ITERATIONS = 310000
 # Cuentas de revisión: el analista mide y analiza; el operario realiza el cambio de setup.
+OPERATOR_ROUTES = {('GET','/api/config'),('POST','/api/records')}
 REVIEW_ACCOUNTS = (('review_access_v1','usuario','artefacto','analista'),('operator_access_v1','operario','troqueladora','operario'))
 
 def hash_password(password, salt):
@@ -66,6 +67,8 @@ def initialize(path):
             CREATE TABLE IF NOT EXISTS records (id TEXT PRIMARY KEY, data TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, updated REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
         ''')
+        if 'created_by' not in [c['name'] for c in db.execute('PRAGMA table_info(records)')]:
+            db.execute('ALTER TABLE records ADD COLUMN created_by TEXT')
         # Bases anteriores: la cuenta única de supervisor pasa a ser el analista y se cierran sus sesiones.
         if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='supervisor'").fetchone():
             db.execute("INSERT OR IGNORE INTO users(username,role,salt,password_hash) SELECT username,'analista',salt,password_hash FROM supervisor")
@@ -79,7 +82,7 @@ def initialize(path):
         db.execute("INSERT OR IGNORE INTO metadata VALUES('database_id',?)",(secrets.token_hex(16),))
         if not db.execute("SELECT 1 FROM metadata WHERE key='seeded'").fetchone():
             for r in simulated_records():
-                db.execute('INSERT OR IGNORE INTO records VALUES(?,?,1,?)',(r['id'],json.dumps(r,ensure_ascii=False),time.time()))
+                db.execute('INSERT OR IGNORE INTO records(id,data,version,updated) VALUES(?,?,1,?)',(r['id'],json.dumps(r,ensure_ascii=False),time.time()))
             db.execute("INSERT INTO metadata VALUES('seeded','true')")
 
 def validate_record(value):
@@ -126,15 +129,14 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError,UnicodeError): raise APIError('JSON inválido.')
         if not isinstance(value,dict): raise APIError('Solicitud inválida.')
         return value
-    def user(self,db,role=None):
+    def user(self,db,required=False):
         cookie=SimpleCookie()
         try: cookie.load(self.headers.get('Cookie',''))
         except Exception: pass
         token=cookie.get('smed_session');row=None
         if token:
             row=db.execute('SELECT u.username,u.role FROM user_sessions t JOIN users u ON u.id=t.user_id WHERE t.token_hash=? AND t.expires>?',(hashlib.sha256(token.value.encode()).hexdigest(),time.time())).fetchone()
-        if role and not row: raise APIError('Inicia sesión para acceder a los registros.',401)
-        if role and row['role']!=role: raise APIError('Esta sección es solo para el analista.',403)
+        if required and not row: raise APIError('Inicia sesión para acceder a los registros.',401)
         return {'username':row['username'],'role':row['role']} if row else None
     def session_cookie(self,db,user_id):
         token=secrets.token_urlsafe(32);db.execute('DELETE FROM user_sessions WHERE expires<?',(time.time(),));db.execute('INSERT INTO user_sessions VALUES(?,?,?)',(hashlib.sha256(token.encode()).hexdigest(),time.time()+43200,user_id))
@@ -168,7 +170,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.body();cookie=SimpleCookie();cookie.load(self.headers.get('Cookie',''))
                 if 'smed_session' in cookie: db.execute('DELETE FROM user_sessions WHERE token_hash=?',(hashlib.sha256(cookie['smed_session'].value.encode()).hexdigest(),))
                 db.commit();self.respond({'ok':True},cookie='smed_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0');return
-            self.user(db,role='analista')
+            user=self.user(db,required=True)
+            # El operario solo hace setups nuevos: lee la meta y guarda o corrige sus propias mediciones.
+            if user['role']!='analista' and (method,path) not in OPERATOR_ROUTES: raise APIError('Esta sección es solo para el analista.',403)
             if path=='/api/config' and method=='GET':
                 row=db.execute("SELECT value FROM metadata WHERE key='config'").fetchone()
                 self.respond(json.loads(row['value']) if row else {'meta':33.6,'demo':False,'compare':False,'externas':[]});return
@@ -187,21 +191,24 @@ class Handler(BaseHTTPRequestHandler):
                 if not isinstance(records,list) or len(records)>5000: raise APIError('Lista de importación inválida.')
                 records=[validate_record(r) for r in records];inserted=0
                 for r in records:
-                    inserted+=db.execute('INSERT OR IGNORE INTO records VALUES(?,?,1,?)',(r['id'],json.dumps(r,ensure_ascii=False),time.time())).rowcount
+                    inserted+=db.execute('INSERT OR IGNORE INTO records(id,data,version,updated) VALUES(?,?,1,?)',(r['id'],json.dumps(r,ensure_ascii=False),time.time())).rowcount
                 db.commit();self.respond({'imported':inserted});return
             if path=='/api/records/seed' and method=='POST':
                 self.body();db.execute("DELETE FROM records WHERE json_extract(data,'$.origen')='Simulado'")
-                for r in simulated_records(): db.execute('INSERT INTO records VALUES(?,?,1,?)',(r['id'],json.dumps(r,ensure_ascii=False),time.time()))
+                for r in simulated_records(): db.execute('INSERT INTO records(id,data,version,updated) VALUES(?,?,1,?)',(r['id'],json.dumps(r,ensure_ascii=False),time.time()))
                 db.commit();self.respond({'count':24});return
             if path=='/api/records' and method=='POST':
-                value=self.body();r=validate_record(value);expected=value.get('_version',0);db.execute('BEGIN IMMEDIATE');old=db.execute('SELECT data,version FROM records WHERE id=?',(r['id'],)).fetchone()
+                value=self.body();r=validate_record(value);expected=value.get('_version',0);db.execute('BEGIN IMMEDIATE');old=db.execute('SELECT data,version,created_by FROM records WHERE id=?',(r['id'],)).fetchone()
+                if user['role']=='operario':
+                    if r['origen'] not in ('Planta','Demo'): raise APIError('Origen inválido.')
+                    if old and old['created_by']!=user['username']: raise APIError('Solo puedes corregir tus propias mediciones.',403)
                 if old:
                     if json.loads(old['data'])==r: self.respond(dict(r,_version=old['version']));return
                     if expected!=old['version']: raise APIError('Esta medición cambió en otra sesión. Actualiza el historial antes de corregirla.',409)
                     version=old['version']+1;db.execute('UPDATE records SET data=?,version=?,updated=? WHERE id=?',(json.dumps(r,ensure_ascii=False),version,time.time(),r['id']))
                 else:
                     if expected: raise APIError('La medición fue eliminada en otra sesión.',409)
-                    version=1;db.execute('INSERT INTO records VALUES(?,?,?,?)',(r['id'],json.dumps(r,ensure_ascii=False),version,time.time()))
+                    version=1;db.execute('INSERT INTO records(id,data,version,updated,created_by) VALUES(?,?,?,?,?)',(r['id'],json.dumps(r,ensure_ascii=False),version,time.time(),user['username']))
                 db.commit();self.respond(dict(r,_version=version));return
             if path.startswith('/api/records/') and method=='DELETE':
                 self.body();rid=unquote(path.removeprefix('/api/records/'));db.execute('DELETE FROM records WHERE id=?',(rid,));db.commit();self.respond({'ok':True});return

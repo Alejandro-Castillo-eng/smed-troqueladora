@@ -11,22 +11,22 @@ function screens(user) {
   context.stage = () => {};
   vm.runInContext(`backendState = ${JSON.stringify({ configured: true, user, databaseId: 'test' })}; renderAccess()`, context);
   const hidden = id => element('#' + id).hidden;
-  return { login: hidden('loginScreen'), analyst: hidden('appMain'), nav: hidden('appNav'), operator: hidden('operatorMain'),
-    account: element('#accountName').textContent, analystSignedIn: run('analystSignedIn') };
+  return { login: hidden('loginScreen'), app: hidden('appMain'), nav: hidden('appNav'),
+    account: element('#accountName').textContent, views: run(`['nuevo', 'hist', 'dash', 'conf'].filter(canView)`) };
 }
 
-test('el analista ve las opciones actuales y no el panel del operario', () => {
+test('el analista conserva todas las secciones', () => {
   assert.deepEqual(screens({ username: 'usuario', role: 'analista' }),
-    { login: true, analyst: false, nav: false, operator: true, account: 'Analista · usuario', analystSignedIn: true });
+    { login: true, app: false, nav: false, account: 'Analista · usuario', views: ['nuevo', 'hist', 'dash', 'conf'] });
 });
 
-test('el operario ve solo su panel, sin medición, historial, análisis ni configuración', () => {
+test('el operario solo tiene la sección Nuevo setup', () => {
   assert.deepEqual(screens({ username: 'operario', role: 'operario' }),
-    { login: true, analyst: true, nav: true, operator: false, account: 'Operario · operario', analystSignedIn: false });
+    { login: true, app: false, nav: false, account: 'Operario · operario', views: ['nuevo'] });
 });
 
 test('sin sesión solo se muestra el inicio de sesión', () => {
-  assert.deepEqual(screens(null), { login: false, analyst: true, nav: true, operator: true, account: '', analystSignedIn: false });
+  assert.deepEqual(screens(null), { login: false, app: true, nav: true, account: '', views: [] });
 });
 
 test('la versión de GitHub Pages admite ambos usuarios y reserva los registros al analista', async () => {
@@ -44,8 +44,14 @@ test('la versión de GitHub Pages admite ambos usuarios y reserva los registros 
   const operator = await api('/api/auth/login', 'POST', { username: 'operario', password: 'troqueladora' });
   assert.deepEqual({ ...operator.user }, { username: 'operario', role: 'operario' });
   await assert.rejects(api('/api/records'), /solo para el analista/);
+  await assert.rejects(api('/api/config', 'POST', { meta: 10 }), /solo para el analista/);
+  assert.equal((await api('/api/config')).meta, 33.6);
+  const entries = [{ name: 'Preparar', minutes: 2 }];
+  assert.equal((await api('/api/records', 'POST', { id: 'OP-1', origen: 'Planta', entries })).id, 'OP-1');
+  assert.equal((await api('/api/records', 'POST', { id: 'OP-1', origen: 'Planta', entries: [{ name: 'Preparar', minutes: 3 }], _version: 1 }))._version, 2);
+  await assert.rejects(api('/api/records', 'POST', { id: 'SIM-001', origen: 'Planta', entries, _version: 1 }), /propias mediciones/);
   await api('/api/auth/logout', 'POST', {});
   await api('/api/auth/login', 'POST', { username: 'usuario', password: 'artefacto' });
   assert.equal((await api('/api/auth/status')).user.role, 'analista');
-  assert.equal((await api('/api/records')).records.length, 1);
+  assert.equal((await api('/api/records')).records.length, 2);
 });
