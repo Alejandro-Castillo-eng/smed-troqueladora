@@ -30,6 +30,23 @@ test('sin sesión solo se muestra el inicio de sesión', () => {
   assert.deepEqual(screens(null), { login: false, app: true, nav: true, account: '', views: [], operatorMode: false });
 });
 
+test('sin sesión primero se elige el rol y luego aparecen sus credenciales', () => {
+  const { context, element, run } = app();
+  context.renderDraft = () => {};
+  vm.runInContext(`backendState = { configured: true, user: null, databaseId: 'test' }; renderAccess()`, context);
+  assert.equal(element('#roleChoice').hidden, false);
+  assert.equal(element('#loginGrid').hidden, true);
+  vm.runInContext(`chooseLoginRole('operario')`, context);
+  assert.equal(run('loginRole'), 'operario');
+  assert.equal(element('#roleChoice').hidden, true);
+  assert.equal(element('#loginGrid').hidden, false);
+  assert.equal(element('#loginRolePill').textContent, 'Operario');
+  assert.equal(element('#loginIntro').textContent, 'Ingresa con tu usuario de operario.');
+  element('#backToRoles').onclick();
+  assert.equal(run('loginRole'), null);
+  assert.equal(element('#roleChoice').hidden, false);
+});
+
 test('la versión de GitHub Pages admite ambos usuarios y reserva los registros al analista', async () => {
   const session = new Map(), local = new Map();
   const context = vm.createContext({
@@ -42,7 +59,8 @@ test('la versión de GitHub Pages admite ambos usuarios y reserva los registros 
   const api = context.window.smedPagesAPI;
   await assert.rejects(api('/api/auth/login', 'POST', { username: 'operario', password: 'artefacto' }), /incorrectos/);
   await assert.rejects(api('/api/auth/login', 'POST', { username: 'constructor', password: 'x' }), /incorrectos/);
-  const operator = await api('/api/auth/login', 'POST', { username: 'operario', password: 'troqueladora' });
+  await assert.rejects(api('/api/auth/login', 'POST', { username: 'usuario', password: 'artefacto', role: 'operario' }), /no son de operario/);
+  const operator = await api('/api/auth/login', 'POST', { username: 'operario', password: 'troqueladora', role: 'operario' });
   assert.deepEqual({ ...operator.user }, { username: 'operario', role: 'operario' });
   await assert.rejects(api('/api/records'), /solo para el analista/);
   await assert.rejects(api('/api/config', 'POST', { meta: 10 }), /solo para el analista/);

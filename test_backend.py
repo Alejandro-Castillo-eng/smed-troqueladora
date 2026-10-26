@@ -55,6 +55,9 @@ class BackendTests(unittest.TestCase):
         sim=next(r for r in analyst_record if r['id']=='SIM-001');sim.update(origen='Planta');sim['entries'][0]['minutes']=0.5
         self.assertEqual(self.request('/api/records','POST',sim,client=operator)[0],403)
         self.assertEqual(self.request('/api/auth/login','POST',{'username':'operario','password':'artefacto'})[0],401)
+        code,data=self.request('/api/auth/login','POST',{'username':'usuario','password':'artefacto','role':'operario'});self.assertEqual(code,401);self.assertIn('no son de operario',data['error'])
+        self.assertEqual(self.request('/api/auth/login','POST',{'username':'operario','password':'troqueladora','role':'operario'})[1]['user']['role'],'operario')
+        self.assertEqual(self.request('/api/auth/login','POST',{'username':'operario','password':'troqueladora','role':'jefe'})[0],400)
     def test_previous_supervisor_database_becomes_analyst(self):
         path=Path(self.tmp.name)/'old.sqlite3'
         with server.connect(path) as db:
