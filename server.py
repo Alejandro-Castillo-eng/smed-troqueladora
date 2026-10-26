@@ -11,6 +11,11 @@ ROOT = Path(__file__).resolve().parent
 LIMA = timezone(timedelta(hours=-5))
 MAX_BODY = 4 * 1024 * 1024
 ITERATIONS = 310000
+# Cuentas de revisión: el analista mide y analiza; el operario realiza el cambio de setup.
+REVIEW_ACCOUNTS = (('review_access_v1','usuario','artefacto','analista'),('operator_access_v1','operario','troqueladora','operario'))
+
+def hash_password(password, salt):
+    return hashlib.pbkdf2_hmac('sha256',password.encode(),bytes.fromhex(salt),ITERATIONS).hex()
 
 class APIError(Exception):
     def __init__(self, message, status=400):
@@ -56,17 +61,21 @@ def initialize(path):
     with connect(path) as db:
         db.execute('PRAGMA journal_mode=WAL')
         db.executescript('''
-            CREATE TABLE IF NOT EXISTS supervisor (id INTEGER PRIMARY KEY CHECK(id=1), username TEXT NOT NULL UNIQUE, salt TEXT NOT NULL, password_hash TEXT NOT NULL);
-            CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, expires REAL NOT NULL, supervisor_id INTEGER NOT NULL REFERENCES supervisor(id));
+            CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, role TEXT NOT NULL CHECK(role IN ('analista','operario')), salt TEXT NOT NULL, password_hash TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS user_sessions (token_hash TEXT PRIMARY KEY, expires REAL NOT NULL, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE);
             CREATE TABLE IF NOT EXISTS records (id TEXT PRIMARY KEY, data TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, updated REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
         ''')
-        if not db.execute("SELECT 1 FROM metadata WHERE key='review_access_v1'").fetchone():
-            salt=secrets.token_hex(16)
-            hashed=hashlib.pbkdf2_hmac('sha256','artefacto'.encode(),bytes.fromhex(salt),ITERATIONS).hex()
-            db.execute('INSERT INTO supervisor VALUES(1,?,?,?) ON CONFLICT(id) DO UPDATE SET username=excluded.username,salt=excluded.salt,password_hash=excluded.password_hash',('usuario',salt,hashed))
-            db.execute('DELETE FROM sessions')
-            db.execute("INSERT INTO metadata VALUES('review_access_v1','true')")
+        # Bases anteriores: la cuenta única de supervisor pasa a ser el analista y se cierran sus sesiones.
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='supervisor'").fetchone():
+            db.execute("INSERT OR IGNORE INTO users(username,role,salt,password_hash) SELECT username,'analista',salt,password_hash FROM supervisor")
+            db.execute('DROP TABLE IF EXISTS sessions');db.execute('DROP TABLE supervisor')
+        for flag,username,password,role in REVIEW_ACCOUNTS:
+            if not db.execute('SELECT 1 FROM metadata WHERE key=?',(flag,)).fetchone():
+                salt=secrets.token_hex(16)
+                db.execute('INSERT INTO users(username,role,salt,password_hash) VALUES(?,?,?,?) ON CONFLICT(username) DO UPDATE SET role=excluded.role,salt=excluded.salt,password_hash=excluded.password_hash',(username,role,salt,hash_password(password,salt)))
+                db.execute('DELETE FROM user_sessions WHERE user_id=(SELECT id FROM users WHERE username=?)',(username,))
+                db.execute("INSERT INTO metadata VALUES(?,'true')",(flag,))
         db.execute("INSERT OR IGNORE INTO metadata VALUES('database_id',?)",(secrets.token_hex(16),))
         if not db.execute("SELECT 1 FROM metadata WHERE key='seeded'").fetchone():
             for r in simulated_records():
@@ -117,17 +126,18 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError,UnicodeError): raise APIError('JSON inválido.')
         if not isinstance(value,dict): raise APIError('Solicitud inválida.')
         return value
-    def user(self,db,required=False):
+    def user(self,db,role=None):
         cookie=SimpleCookie()
         try: cookie.load(self.headers.get('Cookie',''))
         except Exception: pass
         token=cookie.get('smed_session');row=None
         if token:
-            row=db.execute('SELECT s.username FROM sessions t JOIN supervisor s ON s.id=t.supervisor_id WHERE t.token_hash=? AND t.expires>?',(hashlib.sha256(token.value.encode()).hexdigest(),time.time())).fetchone()
-        if required and not row: raise APIError('Inicia sesión para acceder a los registros.',401)
-        return {'username':row['username']} if row else None
-    def session_cookie(self,db):
-        token=secrets.token_urlsafe(32);db.execute('DELETE FROM sessions WHERE expires<?',(time.time(),));db.execute('INSERT INTO sessions VALUES(?,?,1)',(hashlib.sha256(token.encode()).hexdigest(),time.time()+43200))
+            row=db.execute('SELECT u.username,u.role FROM user_sessions t JOIN users u ON u.id=t.user_id WHERE t.token_hash=? AND t.expires>?',(hashlib.sha256(token.value.encode()).hexdigest(),time.time())).fetchone()
+        if role and not row: raise APIError('Inicia sesión para acceder a los registros.',401)
+        if role and row['role']!=role: raise APIError('Esta sección es solo para el analista.',403)
+        return {'username':row['username'],'role':row['role']} if row else None
+    def session_cookie(self,db,user_id):
+        token=secrets.token_urlsafe(32);db.execute('DELETE FROM user_sessions WHERE expires<?',(time.time(),));db.execute('INSERT INTO user_sessions VALUES(?,?,?)',(hashlib.sha256(token.encode()).hexdigest(),time.time()+43200,user_id))
         secure='; Secure' if os.environ.get('SMED_SECURE_COOKIE')=='1' else ''
         return f'smed_session={token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=43200{secure}'
     def dispatch(self,method):
@@ -137,27 +147,28 @@ class Handler(BaseHTTPRequestHandler):
         if not path.startswith('/api/'): raise APIError('No encontrado.',404)
         with connect(self.server.db_path) as db:
             if path=='/api/health' and method=='GET': self.respond({'ok':True,'storage':'SQLite'});return
-            if path=='/api/auth/status' and method=='GET': self.respond({'configured':bool(db.execute('SELECT 1 FROM supervisor').fetchone()),'user':self.user(db),'databaseId':db.execute("SELECT value FROM metadata WHERE key='database_id'").fetchone()['value']});return
+            if path=='/api/auth/status' and method=='GET': self.respond({'configured':bool(db.execute("SELECT 1 FROM users WHERE role='analista'").fetchone()),'user':self.user(db),'databaseId':db.execute("SELECT value FROM metadata WHERE key='database_id'").fetchone()['value']});return
             if path in ('/api/auth/setup','/api/auth/login') and method=='POST':
                 data=self.body();username=data.get('username','');password=data.get('password','')
                 if not isinstance(username,str) or not isinstance(password,str) or not 3<=len(username.strip())<=60 or not 8<=len(password)<=200: raise APIError('Usuario o contraseña inválidos.')
                 username=username.strip()
                 if path.endswith('/setup'):
                     db.execute('BEGIN IMMEDIATE')
-                    if db.execute('SELECT 1 FROM supervisor').fetchone(): raise APIError('El acceso ya está configurado. Inicia sesión.',409)
-                    salt=secrets.token_hex(16);hashed=hashlib.pbkdf2_hmac('sha256',password.encode(),bytes.fromhex(salt),ITERATIONS).hex()
-                    db.execute('INSERT INTO supervisor VALUES(1,?,?,?)',(username,salt,hashed))
+                    if db.execute("SELECT 1 FROM users WHERE role='analista'").fetchone(): raise APIError('El acceso ya está configurado. Inicia sesión.',409)
+                    if db.execute('SELECT 1 FROM users WHERE username=?',(username,)).fetchone(): raise APIError('Ese usuario ya existe. Elige otro.',409)
+                    salt=secrets.token_hex(16);user_id=db.execute("INSERT INTO users(username,role,salt,password_hash) VALUES(?,'analista',?,?)",(username,salt,hash_password(password,salt))).lastrowid;role='analista'
                 else:
-                    row=db.execute('SELECT * FROM supervisor WHERE id=1').fetchone()
-                    salt=bytes.fromhex(row['salt']) if row else bytes(16)
-                    hashed=hashlib.pbkdf2_hmac('sha256',password.encode(),salt,ITERATIONS).hex()
-                    if not row or username!=row['username'] or not hmac.compare_digest(hashed,row['password_hash']): raise APIError('Usuario o contraseña incorrectos.',401)
-                cookie=self.session_cookie(db);db.commit();self.respond({'user':{'username':username}},cookie=cookie);return
+                    row=db.execute('SELECT * FROM users WHERE username=?',(username,)).fetchone()
+                    # Sin usuario se deriva igualmente la clave para no revelar qué usuarios existen.
+                    hashed=hash_password(password,row['salt'] if row else '00'*16)
+                    if not row or not hmac.compare_digest(hashed,row['password_hash']): raise APIError('Usuario o contraseña incorrectos.',401)
+                    user_id,role=row['id'],row['role']
+                cookie=self.session_cookie(db,user_id);db.commit();self.respond({'user':{'username':username,'role':role}},cookie=cookie);return
             if path=='/api/auth/logout' and method=='POST':
                 self.body();cookie=SimpleCookie();cookie.load(self.headers.get('Cookie',''))
-                if 'smed_session' in cookie: db.execute('DELETE FROM sessions WHERE token_hash=?',(hashlib.sha256(cookie['smed_session'].value.encode()).hexdigest(),))
+                if 'smed_session' in cookie: db.execute('DELETE FROM user_sessions WHERE token_hash=?',(hashlib.sha256(cookie['smed_session'].value.encode()).hexdigest(),))
                 db.commit();self.respond({'ok':True},cookie='smed_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0');return
-            self.user(db,required=True)
+            self.user(db,role='analista')
             if path=='/api/config' and method=='GET':
                 row=db.execute("SELECT value FROM metadata WHERE key='config'").fetchone()
                 self.respond(json.loads(row['value']) if row else {'meta':33.6,'demo':False,'compare':False,'externas':[]});return

@@ -22,7 +22,7 @@ jobs:
       - name: Verificar backend local
         run: python3 -m unittest test_backend -q
       - name: Verificar medición y exportación Excel
-        run: node --test test_excel_export.cjs test_measurement.cjs
+        run: node --test test_excel_export.cjs test_measurement.cjs test_access.cjs
       - name: Preparar versión de revisión
         run: python3 scripts/build_pages.py
       - uses: actions/upload-pages-artifact@v4

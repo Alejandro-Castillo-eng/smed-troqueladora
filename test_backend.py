@@ -21,8 +21,8 @@ class BackendTests(unittest.TestCase):
         try:
             with (client or self.client).open(req) as r:return r.status,json.load(r)
         except HTTPError as e:return e.code,json.load(e)
-    def login(self):
-        code,_=self.request('/api/auth/login','POST',{'username':'usuario','password':'artefacto'});self.assertEqual(code,200)
+    def login(self,username='usuario',password='artefacto',client=None):
+        code,data=self.request('/api/auth/login','POST',{'username':username,'password':password},client=client);self.assertEqual(code,200);return data['user']
     def test_auth_and_private_files(self):
         self.assertEqual(self.request('/api/records')[0],401)
         self.assertEqual(self.request('/data/smed.sqlite3')[0],404)
@@ -33,6 +33,28 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(self.request('/api/records')[0],401)
         self.assertEqual(self.request('/api/auth/login','POST',{'username':'usuario','password':'incorrecta!'})[0],401)
         self.assertEqual(self.request('/api/auth/login','POST',{'username':'usuario','password':'artefacto'})[0],200)
+    def test_operator_has_own_access_without_analyst_options(self):
+        operator=build_opener(HTTPCookieProcessor(CookieJar()))
+        self.assertEqual(self.login('operario','troqueladora',client=operator),{'username':'operario','role':'operario'})
+        self.assertEqual(self.request('/api/auth/status',client=operator)[1]['user'],{'username':'operario','role':'operario'})
+        for path,method,value in (('/api/records','GET',None),('/api/config','GET',None),('/api/records/seed','POST',{}),('/api/records/SIM-001','DELETE',{})):
+            self.assertEqual(self.request(path,method,value,client=operator)[0],403,path)
+        self.assertEqual(self.login(),{'username':'usuario','role':'analista'})
+        self.assertEqual(len(self.request('/api/records')[1]['records']),24)
+        self.assertEqual(self.request('/api/auth/login','POST',{'username':'operario','password':'artefacto'})[0],401)
+    def test_previous_supervisor_database_becomes_analyst(self):
+        path=Path(self.tmp.name)/'old.sqlite3'
+        with server.connect(path) as db:
+            db.executescript('''CREATE TABLE supervisor (id INTEGER PRIMARY KEY CHECK(id=1), username TEXT NOT NULL UNIQUE, salt TEXT NOT NULL, password_hash TEXT NOT NULL);
+                CREATE TABLE sessions (token_hash TEXT PRIMARY KEY, expires REAL NOT NULL, supervisor_id INTEGER NOT NULL REFERENCES supervisor(id));
+                CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);''')
+            salt='ab'*16;db.execute('INSERT INTO supervisor VALUES(1,?,?,?)',('jefe.planta',salt,server.hash_password('Clave-antigua1',salt)))
+            db.execute("INSERT INTO sessions VALUES('x',9e12,1)");db.execute("INSERT INTO metadata VALUES('review_access_v1','true')")
+        server.initialize(path);server.initialize(path)
+        with server.connect(path) as db:
+            self.assertEqual([tuple(r) for r in db.execute('SELECT username,role FROM users ORDER BY id')],[('jefe.planta','analista'),('operario','operario')])
+            self.assertIsNone(db.execute("SELECT 1 FROM sqlite_master WHERE name IN ('supervisor','sessions')").fetchone())
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM user_sessions').fetchone()[0],0)
     def test_records_persistence_idempotency_conflicts_and_seed(self):
         self.login();records=self.request('/api/records')[1]['records'];self.assertEqual(len(records),24)
         self.assertTrue(all(r['origen']=='Simulado' for r in records));self.assertTrue(any(any(e['status']=='Omitida' for e in r['entries']) for r in records))
