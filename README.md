@@ -49,9 +49,9 @@ derivada mediante PBKDF2 y sesión en cookie HttpOnly.
 
 En **Preparar la medición** el operario marca el kit externo del siguiente pedido:
 revisión de la orden (paso 1) y materiales junto a la máquina (paso 2), 10 puntos en
-total. Las marcas se conservan al recargar. Si inicia la parada con el kit incompleto,
-se pide confirmación y la medición guarda cuántos puntos estaban listos y cuáles faltaban;
-el resultado lo muestra.
+total. Las marcas se conservan al recargar. La parada se inicia aunque el kit esté
+incompleto, sin preguntas: la medición guarda cuántos puntos estaban listos y cuáles
+faltaban, y el resultado lo muestra.
 
 El operario no ve la lista editable de actividades para no distraerse durante el cambio:
 marca el kit, inicia el conteo y la app usa siempre la lista de referencia. El analista

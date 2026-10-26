@@ -131,26 +131,15 @@ test('el kit de materiales se guarda con la medición e indica lo que faltaba', 
   assert.deepEqual(state.run('RUN.kit'), {});
 });
 
-test('iniciar con el kit incompleto pide confirmación; completo inicia directamente', () => {
+test('iniciar con el kit incompleto no pregunta: inicia y lo registra', () => {
   const state = measurement();
-  let asked = null;
-  state.context.ask = (title, help, fields, action) => { asked = { title, action }; };
+  state.context.ask = () => { throw new Error('no debe preguntar'); };
   state.context.renderRun = () => {};
   for (const id of ['measurementDate', 'measurementTime']) state.element('#' + id).reportValidity = () => true;
-  state.element('#measurementDate').value = '2026-10-26';
   state.run(`RUN.kit = { 'orden-codigo': true }`);
   state.element('#start').onclick();
-  assert.equal(asked.title, 'Kit de materiales incompleto');
-  assert.equal(state.run('RUN.phase'), 1);
-  asked.action();
   assert.equal(state.run('RUN.phase'), 2);
-  const complete = measurement();
-  complete.context.ask = () => { throw new Error('no debe preguntar'); };
-  complete.context.renderRun = () => {};
-  for (const id of ['measurementDate', 'measurementTime']) complete.element('#' + id).reportValidity = () => true;
-  complete.run(`RUN.kit = Object.fromEntries(KIT.flatMap(g => g.items).map(([id]) => [id, true]))`);
-  complete.element('#start').onclick();
-  assert.equal(complete.run('RUN.phase'), 2);
+  assert.equal(state.run('kitSummary().listos'), 1);
 });
 
 test('el operario inicia siempre con la lista de referencia, sin editarla', () => {
