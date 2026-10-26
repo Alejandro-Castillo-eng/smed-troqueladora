@@ -60,8 +60,9 @@ Las marcas se conservan al recargar. La parada se inicia aunque falten puntos, s
 la medición guarda, por grupo, cuántos estaban listos y cuáles faltaban, y el resultado lo muestra.
 
 El operario no ve la lista editable de actividades para no distraerse durante el cambio:
-marca el kit, inicia el conteo y la app usa siempre la lista de referencia. El analista
-conserva la lista para ajustarla.
+marca el kit, inicia el conteo y la app usa siempre la lista de referencia. Al medir solo
+ve la actividad actual y sus botones, sin el panel «Actividades de esta medición». El
+analista conserva la lista y el panel.
 
 ## Terminar una medición
 

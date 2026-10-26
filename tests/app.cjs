@@ -6,7 +6,13 @@ const vm = require('node:vm');
 module.exports = function app({ storage = new Map(), clock } = {}) {
   const elements = new Map();
   const element = selector => {
-    if (!elements.has(selector)) elements.set(selector, { value: '', addEventListener() {} });
+    if (!elements.has(selector)) {
+      const classes = new Set();
+      elements.set(selector, { value: '', addEventListener() {}, classList: {
+        add: c => classes.add(c), remove: c => classes.delete(c), contains: c => classes.has(c),
+        toggle: (c, force = !classes.has(c)) => (force ? classes.add(c) : classes.delete(c), force),
+      } });
+    }
     return elements.get(selector);
   };
   const context = vm.createContext({
