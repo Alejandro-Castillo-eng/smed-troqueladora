@@ -166,17 +166,19 @@ test('el operario solo inicia y termina: una actividad con la parada total', asy
   assert.equal(state.run('RUN.phase'), 1);
 });
 
-test('el analista no usa la preparación externa: su medición no guarda el kit', async () => {
+test('el analista también usa la preparación externa: su medición guarda el kit', async () => {
   const state = measurement();
   state.context.renderRun = () => {};
   for (const id of ['measurementDate', 'measurementTime']) state.element('#' + id).reportValidity = () => true;
   state.run(`backendState = { configured: true, user: { username: 'usuario', role: 'analista' } }; RUN.kit = { 'kit-troquel': true }`);
   state.element('#start').onclick();
-  assert.equal(state.run('RUN.withKit'), false);
+  assert.equal(state.run('RUN.withKit'), true);
+  assert.equal(state.run('RUN.soloTotal'), false);
   let record;
   state.context.saveRecord = async value => { record = copy(value); };
   await state.context.finishEarly();
-  assert.equal(record.kit, undefined);
+  assert.equal(record.kit.listos, 1);
+  assert.equal(record.soloTotal, undefined);
 });
 
 test('el operario sí guarda el kit al iniciar desde su sesión', () => {
