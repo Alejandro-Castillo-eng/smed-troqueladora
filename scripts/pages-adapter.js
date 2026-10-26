@@ -22,7 +22,8 @@
   if(path==='/api/config'){
    if(method==='POST'){if(!Number.isFinite(body.meta)||body.meta<=0)fail('Meta inválida.');state.config=copy(body);write(state)}return copy(state.config);
   }
-  if(path==='/api/records'&&method==='GET')return{records:copy(state.records)};
+  const withAuthor=r=>{const name=state.owners[r.id];return{...copy(r),_registradoPor:name&&Object.hasOwn(ACCOUNTS,name)?{username:name,role:ACCOUNTS[name].role}:null}};
+  if(path==='/api/records'&&method==='GET')return{records:state.records.map(withAuthor)};
   if(path==='/api/records/import'&&method==='POST'){
    let count=0;for(const r of body.records||[]){if(!state.records.some(e=>e.id===r.id)){state.records.push({...copy(r),_version:1});count++}}write(state);return{imported:count};
   }
@@ -32,13 +33,13 @@
   if(path==='/api/records'&&method==='POST'){
    if(!body.id||!Array.isArray(body.entries)||!body.entries.length)fail('Registro inválido.');
    for(const e of body.entries)if(!Number.isFinite(e.minutes)||e.minutes<0)fail('Duración inválida.');
-   const record=copy(body),version=record._version||0;delete record._version;
+   const record=copy(body),version=record._version||0;delete record._version;delete record._registradoPor;
    const index=state.records.findIndex(r=>r.id===record.id);let nextVersion=1;
    if(operator&&!['Planta','Demo'].includes(record.origen))fail('Origen inválido.');
    if(operator&&index>=0&&state.owners[record.id]!==user().username)fail('Solo puedes corregir tus propias mediciones.');
-   if(index>=0){const previous=copy(state.records[index]),oldVersion=previous._version;delete previous._version;if(JSON.stringify(previous)===JSON.stringify(record))return copy(state.records[index]);if(version!==oldVersion)fail('Esta medición cambió en otra pestaña. Actualiza el historial antes de corregirla.');nextVersion=oldVersion+1}
+   if(index>=0){const previous=copy(state.records[index]),oldVersion=previous._version;delete previous._version;if(JSON.stringify(previous)===JSON.stringify(record))return withAuthor(state.records[index]);if(version!==oldVersion)fail('Esta medición cambió en otra pestaña. Actualiza el historial antes de corregirla.');nextVersion=oldVersion+1}
    else if(version)fail('La medición fue eliminada en otra pestaña.');
-   const saved={...record,_version:nextVersion};if(index>=0)state.records[index]=saved;else{state.records.push(saved);state.owners[saved.id]=user().username}write(state);return copy(saved);
+   const saved={...record,_version:nextVersion};if(index>=0)state.records[index]=saved;else{state.records.push(saved);state.owners[saved.id]=user().username}write(state);return withAuthor(saved);
   }
   if(path.startsWith('/api/records/')&&method==='DELETE'){const id=decodeURIComponent(path.slice('/api/records/'.length));state.records=state.records.filter(r=>r.id!==id);write(state);return{ok:true}}
   fail('Operación no disponible en la versión de revisión.');

@@ -144,16 +144,26 @@ test('iniciar con el kit incompleto no pregunta: inicia y lo registra', () => {
   assert.equal(state.run('kitSummary().listos'), 1);
 });
 
-test('el operario inicia siempre con la lista de referencia, sin editarla', () => {
+test('el operario solo inicia y termina: una actividad con la parada total', async () => {
   const state = measurement();
   state.context.renderRun = () => {};
   for (const id of ['measurementDate', 'measurementTime']) state.element('#' + id).reportValidity = () => true;
   state.run(`backendState = { configured: true, user: { username: 'operario', role: 'operario' } };
-    RUN.kit = Object.fromEntries(KIT.flatMap(g => g.items).map(([id]) => [id, true]));
+    RUN.kit = { 'kit-troquel': true };
     RUN.plan = [{ id: 'X', name: 'Actividad cambiada por otra persona' }]`);
   state.element('#start').onclick();
   assert.equal(state.run('RUN.phase'), 2);
-  assert.deepEqual(state.run('RUN.plan'), state.run('defaultPlan()'));
+  assert.deepEqual(state.run('RUN.plan'), [{ id: 'TOTAL', name: 'Cambio de setup completo' }]);
+  let record;
+  state.context.saveRecord = async value => { record = copy(value); };
+  state.clock.now += 12.5 * 60000;
+  await state.context.advance();
+  assert.equal(record.soloTotal, true);
+  assert.equal(record.entries.length, 1);
+  assert.equal(record.entries[0].minutes, 12.5);
+  assert.equal(record.measuredTotal, 12.5);
+  assert.equal(record.kit.listos, 1);
+  assert.equal(state.run('RUN.phase'), 1);
 });
 
 test('el analista no usa la preparación externa: su medición no guarda el kit', async () => {

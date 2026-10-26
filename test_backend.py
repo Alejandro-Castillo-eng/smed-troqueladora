@@ -46,6 +46,12 @@ class BackendTests(unittest.TestCase):
         saved['entries'][0]['minutes']=1.5;code,saved=self.request('/api/records','POST',saved,client=operator);self.assertEqual((code,saved['_version']),(200,2))
         self.assertEqual(self.request('/api/records','POST',dict(record,id='OPERARIO-2',origen='Simulado'),client=operator)[0],400)
         self.login();analyst_record=self.request('/api/records')[1]['records'];self.assertEqual(len(analyst_record),25)
+        authors={r['id']:r['_registradoPor'] for r in analyst_record}
+        self.assertEqual(authors['OPERARIO-1'],{'username':'operario','role':'operario'});self.assertIsNone(authors['SIM-001'])
+        mine=dict(record,id='ANALISTA-1',_registradoPor={'username':'operario','role':'operario'})
+        self.assertEqual(self.request('/api/records','POST',mine)[1]['_registradoPor'],{'username':'usuario','role':'analista'})
+        with server.connect(self.path) as db:self.assertNotIn('_registradoPor',json.loads(db.execute("SELECT data FROM records WHERE id='ANALISTA-1'").fetchone()[0]))
+        analyst_record=[r for r in self.request('/api/records')[1]['records'] if r['id']!='ANALISTA-1']
         sim=next(r for r in analyst_record if r['id']=='SIM-001');sim.update(origen='Planta');sim['entries'][0]['minutes']=0.5
         self.assertEqual(self.request('/api/records','POST',sim,client=operator)[0],403)
         self.assertEqual(self.request('/api/auth/login','POST',{'username':'operario','password':'artefacto'})[0],401)

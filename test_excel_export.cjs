@@ -68,7 +68,7 @@ test('el botón Excel exporta todos los orígenes y conserva el detalle', () => 
   assert.equal(saved.book.Mediciones.rows[0][1], '1. Preparar (min)');
   assert.equal(saved.book.Mediciones.rows[1][1], 2);
   assert.deepEqual(saved.book.Mediciones.rows[2].slice(0, 3), ['2026-10-18', 'No se registró', 4]);
-  assert.deepEqual(saved.book.Detalle.rows[0], ['Fecha', 'Hora de inicio', 'Hora de fin', 'Parada (min)', 'Medición', 'Actividades omitidas']);
+  assert.deepEqual(saved.book.Detalle.rows[0], ['Fecha', 'Hora de inicio', 'Hora de fin', 'Parada (min)', 'Medición', 'Actividades omitidas', 'Registrado por']);
   assert.deepEqual(saved.book.Detalle.rows.slice(1).map(row => row[0]), ['2026-10-19', '2026-10-18']);
 });
 
@@ -76,10 +76,22 @@ test('la hoja Detalle reproduce la tabla del historial', () => {
   const { context, run } = app();
   context.records = [
     record([activity('Preparar', 0.0655), activity('Ajustar', 0.01451667), activity('Probar', 0, { status: 'Omitida' }), activity('Aprobar', 0, { status: 'Omitida' })], { horaInicio: '23:39:57', horaFin: '23:40:02' }),
-    record([activity('Preparar', 20), activity('Ajustar', 33.666)], { fecha: '2026-10-11', horaInicio: '14:11:00', horaFin: '15:04:40' }),
+    record([activity('Preparar', 20), activity('Ajustar', 33.666)], { fecha: '2026-10-11', horaInicio: '14:11:00', horaFin: '15:04:40', _registradoPor: { username: 'operario', role: 'operario' } }),
   ];
   assert.deepEqual(run('historyExportRows(records)').slice(1), [
-    ['2026-10-19', '23:39:57', '23:40:02', 0.08, 'Con omisiones', 2],
-    ['2026-10-11', '14:11:00', '15:04:40', 53.67, 'Completa', 0],
+    ['2026-10-19', '23:39:57', '23:40:02', 0.08, 'Con omisiones', 2, '—'],
+    ['2026-10-11', '14:11:00', '15:04:40', 53.67, 'Completa', 0, 'Operario · operario'],
   ]);
+});
+
+test('una medición de solo parada total no crea columnas de actividad ni entra al Pareto', () => {
+  const { context, run } = app();
+  const total = record([activity('Cambio de setup completo', 31.5)], { soloTotal: true, plan: [{ id: 'TOTAL', name: 'Cambio de setup completo' }], _registradoPor: { username: 'operario', role: 'operario' } });
+  context.records = [record([activity('Preparar', 2), activity('Ajustar', 4)]), total];
+  const result = run('excelRows(records)');
+  assert.deepEqual(result[0], ['Fecha', '1. Preparar (min)', '2. Ajustar (min)', 'Hora de inicio', 'Hora de fin', 'Origen', 'Parada total (min)']);
+  assert.deepEqual(result[2].slice(1, 3), ['No se registró', 'No se registró']);
+  assert.equal(result[2].at(-1), 31.5);
+  assert.deepEqual(run('activityStats(records).map(s => s.name)'), ['Ajustar', 'Preparar']);
+  assert.deepEqual(run('historyExportRows(records)')[2].slice(4), ['Solo parada total', 0, 'Operario · operario']);
 });
