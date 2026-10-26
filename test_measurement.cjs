@@ -117,3 +117,38 @@ test('la finalización habitual con el botón siguiente sigue guardando una sola
   assert.equal(record.entries[0].status, 'Registrada');
   assert.equal(state.run('RUN.phase'), 1);
 });
+
+test('el kit de materiales se guarda con la medición e indica lo que faltaba', async () => {
+  const state = measurement(); prepare(state);
+  state.run(`RUN.kit = { 'orden-codigo': true, 'kit-troquel': true, 'otro-legado': true }`);
+  let record;
+  state.context.saveRecord = async value => { record = copy(value); };
+  await state.context.finishEarly();
+  assert.equal(record.kit.listos, 2);
+  assert.equal(record.kit.total, 10);
+  assert.equal(record.kit.faltantes.length, 8);
+  assert(record.kit.faltantes.includes('Dimensiones del empaque'));
+  assert.deepEqual(state.run('RUN.kit'), {});
+});
+
+test('iniciar con el kit incompleto pide confirmación; completo inicia directamente', () => {
+  const state = measurement();
+  let asked = null;
+  state.context.ask = (title, help, fields, action) => { asked = { title, action }; };
+  state.context.renderRun = () => {};
+  for (const id of ['measurementDate', 'measurementTime']) state.element('#' + id).reportValidity = () => true;
+  state.element('#measurementDate').value = '2026-10-26';
+  state.run(`RUN.kit = { 'orden-codigo': true }`);
+  state.element('#start').onclick();
+  assert.equal(asked.title, 'Kit de materiales incompleto');
+  assert.equal(state.run('RUN.phase'), 1);
+  asked.action();
+  assert.equal(state.run('RUN.phase'), 2);
+  const complete = measurement();
+  complete.context.ask = () => { throw new Error('no debe preguntar'); };
+  complete.context.renderRun = () => {};
+  for (const id of ['measurementDate', 'measurementTime']) complete.element('#' + id).reportValidity = () => true;
+  complete.run(`RUN.kit = Object.fromEntries(KIT.flatMap(g => g.items).map(([id]) => [id, true]))`);
+  complete.element('#start').onclick();
+  assert.equal(complete.run('RUN.phase'), 2);
+});
