@@ -120,7 +120,7 @@ test('la finalización habitual con el botón siguiente sigue guardando una sola
 
 test('el kit de materiales se guarda con la medición e indica lo que faltaba', async () => {
   const state = measurement(); prepare(state);
-  state.run(`RUN.kit = { 'orden-revision': true, 'kit-troquel': true, 'orden-codigo': true }`);
+  state.run(`RUN.withKit = true; RUN.kit = { 'orden-revision': true, 'kit-troquel': true, 'orden-codigo': true }`);
   let record;
   state.context.saveRecord = async value => { record = copy(value); };
   await state.context.finishEarly();
@@ -154,4 +154,26 @@ test('el operario inicia siempre con la lista de referencia, sin editarla', () =
   state.element('#start').onclick();
   assert.equal(state.run('RUN.phase'), 2);
   assert.deepEqual(state.run('RUN.plan'), state.run('defaultPlan()'));
+});
+
+test('el analista no usa la preparación externa: su medición no guarda el kit', async () => {
+  const state = measurement();
+  state.context.renderRun = () => {};
+  for (const id of ['measurementDate', 'measurementTime']) state.element('#' + id).reportValidity = () => true;
+  state.run(`backendState = { configured: true, user: { username: 'usuario', role: 'analista' } }; RUN.kit = { 'kit-troquel': true }`);
+  state.element('#start').onclick();
+  assert.equal(state.run('RUN.withKit'), false);
+  let record;
+  state.context.saveRecord = async value => { record = copy(value); };
+  await state.context.finishEarly();
+  assert.equal(record.kit, undefined);
+});
+
+test('el operario sí guarda el kit al iniciar desde su sesión', () => {
+  const state = measurement();
+  state.context.renderRun = () => {};
+  for (const id of ['measurementDate', 'measurementTime']) state.element('#' + id).reportValidity = () => true;
+  state.run(`backendState = { configured: true, user: { username: 'operario', role: 'operario' } }`);
+  state.element('#start').onclick();
+  assert.equal(state.run('RUN.withKit'), true);
 });
