@@ -45,6 +45,14 @@ Abre http://127.0.0.1:8080. Los accesos de revisión del analista y del operario
 revisión del profesor. La autenticación se valida en el servidor, con contraseña
 derivada mediante PBKDF2 y sesión en cookie HttpOnly.
 
+## Kit de materiales
+
+En **Preparar la medición** el operario marca el kit externo del siguiente pedido:
+revisión de la orden (paso 1) y materiales junto a la máquina (paso 2), 10 puntos en
+total. Las marcas se conservan al recargar. Si inicia la parada con el kit incompleto,
+se pide confirmación y la medición guarda cuántos puntos estaban listos y cuáles faltaban;
+el resultado lo muestra.
+
 ## Terminar una medición
 
 Durante la medición, **Terminar medición** detiene el tiempo y guarda lo registrado
