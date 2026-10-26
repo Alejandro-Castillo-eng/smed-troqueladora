@@ -61,9 +61,15 @@ Las marcas se conservan al recargar. La parada se inicia aunque falten puntos, s
 la medición guarda, por grupo, cuántos estaban listos y cuáles faltaban, y el resultado lo muestra.
 
 El operario no ve la lista editable de actividades para no distraerse durante el cambio:
-marca el kit, inicia el conteo y la app usa siempre la lista de referencia. Al medir solo
-ve la actividad actual y sus botones, sin el panel «Actividades de esta medición». El
-analista conserva la lista y el panel.
+marca la preparación externa, presiona **Iniciar parada y medición** y, al acabar,
+**Terminar medición**. Mientras tanto solo ve el cronómetro de la parada total. Su medición
+se guarda como **solo parada total**: entra al Historial, a la evolución y al cumplimiento
+de la meta, pero no al Pareto, a la variación ni a las columnas por actividad del Excel.
+El analista sigue midiendo actividad por actividad.
+
+El Historial y la hoja Detalle del Excel incluyen **Registrado por** (Analista u Operario
+y su usuario). Lo calcula el servidor a partir de quién creó la medición; las anteriores
+a los roles muestran «—».
 
 ## Terminar una medición
 
@@ -133,8 +139,8 @@ Las repeticiones registradas se suman y las actividades ausentes u omitidas mues
 **No se registró**. Un tiempo registrado de cero se conserva como número.
 
 Al final aparecen las horas, el origen y la parada total. La hoja **Detalle** reproduce la tabla
-del Historial: fecha, horas de inicio y fin, parada en minutos, estado de la medición
-y número de actividades omitidas. La parada total incluye también el tiempo
+del Historial: fecha, horas de inicio y fin, parada en minutos, estado de la medición,
+número de actividades omitidas y quién la registró. La parada total incluye también el tiempo
 transcurrido en omisiones e incidencias. El CSV conserva el desglose por entrada,
 incluidas incidencias, omisiones y correcciones.
 

@@ -54,5 +54,8 @@ test('la versión de GitHub Pages admite ambos usuarios y reserva los registros 
   await api('/api/auth/logout', 'POST', {});
   await api('/api/auth/login', 'POST', { username: 'usuario', password: 'artefacto' });
   assert.equal((await api('/api/auth/status')).user.role, 'analista');
-  assert.equal((await api('/api/records')).records.length, 2);
+  const records = (await api('/api/records')).records;
+  assert.equal(records.length, 2);
+  assert.deepEqual({ ...records.find(r => r.id === 'OP-1')._registradoPor }, { username: 'operario', role: 'operario' });
+  assert.equal(records.find(r => r.id === 'SIM-001')._registradoPor, null);
 });

@@ -87,7 +87,7 @@ def initialize(path):
 
 def validate_record(value):
     if not isinstance(value,dict): raise APIError('Registro inválido.')
-    r=dict(value);r.pop('_version',None)
+    r=dict(value);r.pop('_version',None);r.pop('_registradoPor',None)
     if not isinstance(r.get('id'),str) or not 1<=len(r['id'])<=100: raise APIError('Identificador inválido.')
     try: date.fromisoformat(r.get('fecha',''))
     except (ValueError,TypeError): raise APIError('Fecha inválida.')
@@ -108,6 +108,11 @@ def validate_record(value):
     try: json.dumps(r,allow_nan=False)
     except (ValueError,TypeError): raise APIError('Datos numéricos inválidos.')
     return r
+
+def recorded_by(db, username):
+    # Quién creó la medición; las anteriores a los roles no lo registran.
+    row=db.execute('SELECT username,role FROM users WHERE username=?',(username,)).fetchone() if username else None
+    return {'username':row['username'],'role':row['role']} if row else None
 
 class Handler(BaseHTTPRequestHandler):
     server_version='SMED/1.0'
@@ -185,7 +190,8 @@ class Handler(BaseHTTPRequestHandler):
                 db.execute("INSERT INTO metadata VALUES('config',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(json.dumps(value),))
                 db.commit();self.respond(value);return
             if path=='/api/records' and method=='GET':
-                self.respond({'records':[dict(json.loads(row['data']),_version=row['version']) for row in db.execute('SELECT data,version FROM records ORDER BY updated DESC')]});return
+                rows=db.execute('SELECT r.data,r.version,u.username,u.role FROM records r LEFT JOIN users u ON u.username=r.created_by ORDER BY r.updated DESC')
+                self.respond({'records':[dict(json.loads(row['data']),_version=row['version'],_registradoPor={'username':row['username'],'role':row['role']} if row['username'] else None) for row in rows]});return
             if path=='/api/records/import' and method=='POST':
                 data=self.body();records=data.get('records',[])
                 if not isinstance(records,list) or len(records)>5000: raise APIError('Lista de importación inválida.')
@@ -203,13 +209,13 @@ class Handler(BaseHTTPRequestHandler):
                     if r['origen'] not in ('Planta','Demo'): raise APIError('Origen inválido.')
                     if old and old['created_by']!=user['username']: raise APIError('Solo puedes corregir tus propias mediciones.',403)
                 if old:
-                    if json.loads(old['data'])==r: self.respond(dict(r,_version=old['version']));return
+                    if json.loads(old['data'])==r: self.respond(dict(r,_version=old['version'],_registradoPor=recorded_by(db,old['created_by'])));return
                     if expected!=old['version']: raise APIError('Esta medición cambió en otra sesión. Actualiza el historial antes de corregirla.',409)
                     version=old['version']+1;db.execute('UPDATE records SET data=?,version=?,updated=? WHERE id=?',(json.dumps(r,ensure_ascii=False),version,time.time(),r['id']))
                 else:
                     if expected: raise APIError('La medición fue eliminada en otra sesión.',409)
                     version=1;db.execute('INSERT INTO records(id,data,version,updated,created_by) VALUES(?,?,?,?,?)',(r['id'],json.dumps(r,ensure_ascii=False),version,time.time(),user['username']))
-                db.commit();self.respond(dict(r,_version=version));return
+                db.commit();self.respond(dict(r,_version=version,_registradoPor=recorded_by(db,old['created_by'] if old else user['username'])));return
             if path.startswith('/api/records/') and method=='DELETE':
                 self.body();rid=unquote(path.removeprefix('/api/records/'));db.execute('DELETE FROM records WHERE id=?',(rid,));db.commit();self.respond({'ok':True});return
             raise APIError('No encontrado.',404)
