@@ -120,15 +120,15 @@ test('la finalización habitual con el botón siguiente sigue guardando una sola
 
 test('el kit de materiales se guarda con la medición e indica lo que faltaba', async () => {
   const state = measurement(); prepare(state);
-  state.run(`RUN.kit = { 'orden-codigo': true, 'kit-troquel': true, 'otro-legado': true }`);
+  state.run(`RUN.kit = { 'orden-revision': true, 'kit-troquel': true, 'orden-codigo': true }`);
   let record;
   state.context.saveRecord = async value => { record = copy(value); };
   await state.context.finishEarly();
   assert.equal(record.kit.listos, 2);
-  assert.equal(record.kit.total, 10);
-  assert.equal(record.kit.faltantes.length, 8);
-  assert(record.kit.faltantes.includes('Revisar dimensiones del empaque'));
-  assert.deepEqual(record.kit.grupos.map(g => [g.key, g.listos, g.total]), [['materiales', 1, 5], ['externas', 1, 5]]);
+  assert.equal(record.kit.total, 11);
+  assert.equal(record.kit.faltantes.length, 9);
+  assert(record.kit.faltantes.includes('Anotar los valores de presión, velocidad y registro'));
+  assert.deepEqual(record.kit.grupos.map(g => [g.key, g.listos, g.total]), [['materiales', 1, 6], ['externas', 1, 5]]);
   assert(record.kit.grupos[0].faltantes.includes('Herramientas de ajuste (llaves y calibrador)'));
   assert.deepEqual(state.run('RUN.kit'), {});
 });
@@ -138,7 +138,7 @@ test('iniciar con el kit incompleto no pregunta: inicia y lo registra', () => {
   state.context.ask = () => { throw new Error('no debe preguntar'); };
   state.context.renderRun = () => {};
   for (const id of ['measurementDate', 'measurementTime']) state.element('#' + id).reportValidity = () => true;
-  state.run(`RUN.kit = { 'orden-codigo': true }`);
+  state.run(`RUN.kit = { 'orden-revision': true }`);
   state.element('#start').onclick();
   assert.equal(state.run('RUN.phase'), 2);
   assert.equal(state.run('kitSummary().listos'), 1);

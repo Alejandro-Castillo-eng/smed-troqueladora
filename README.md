@@ -47,13 +47,14 @@ derivada mediante PBKDF2 y sesión en cookie HttpOnly.
 
 ## Preparación externa
 
-En **Preparar la medición** el operario marca, con la máquina todavía produciendo, dos grupos
-de 5 puntos, cada uno con su avance:
+En **Preparar la medición** el operario marca, con la máquina todavía produciendo, dos grupos,
+cada uno con su avance:
 
-- **Materiales y herramientas a la mano:** troquel, láminas, herramientas de ajuste,
-  plantilla y ficha técnica.
-- **Actividades hechas con la máquina en marcha:** revisión de la orden (código, dimensiones,
-  cartón, calidad) e inspección y limpieza del troquel.
+- **Materiales y herramientas a la mano (6):** troquel verificado, láminas en el carrito,
+  herramientas de ajuste, plantilla, ficha técnica y lugar libre para el troquel que se retira.
+- **Actividades hechas con la máquina en marcha (5):** revisar la orden, inspeccionar y limpiar
+  el troquel nuevo, ordenar la zona, anotar presión, velocidad y registro, y avisar a calidad
+  para aprobar la primera pieza. Buscan acortar las actividades más largas de la parada.
 
 Las marcas se conservan al recargar. La parada se inicia aunque falten puntos, sin preguntas:
 la medición guarda, por grupo, cuántos estaban listos y cuáles faltaban, y el resultado lo muestra.
