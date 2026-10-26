@@ -415,7 +415,7 @@ function ensureMeasurementData(){
 }
 $('#measurementDate').oninput=()=>{RUN.data.measurementDate=$('#measurementDate').value;persist()};
 
-// Preparación externa (solo el operario): lo que tiene a la mano y lo que hizo antes de detener la máquina.
+// Preparación externa: lo que se tiene a la mano y lo que se hizo antes de detener la máquina.
 const KIT=[
  {key:'materiales',step:'Materiales y herramientas a la mano',missing:'Faltaba a la mano',items:[['kit-troquel','Troquel del siguiente pedido, con código verificado'],['kit-laminas','Láminas del pedido en el carrito, junto a la máquina'],['kit-herramientas','Herramientas de ajuste (llaves y calibrador)'],['kit-plantilla','Plantilla de verificación del producto'],['kit-ficha','Ficha técnica: presión, velocidad, registro y marcas del riel'],['kit-lugar','Lugar libre para dejar el troquel que se retira']]},
  {key:'externas',step:'Actividades hechas con la máquina en marcha',missing:'No se hizo con la máquina en marcha',items:[['orden-revision','Revisar la orden: código, cantidad, dimensiones, cartón y tolerancias'],['kit-inspeccion','Inspeccionar y limpiar el troquel nuevo (cuchillas, hendido, expulsores)'],['zona-orden','Ordenar la zona: retirar lo que no es del nuevo pedido'],['parametros','Anotar los valores de presión, velocidad y registro'],['aviso-calidad','Avisar a calidad o al supervisor para aprobar la primera pieza']]}
@@ -435,7 +435,7 @@ const isOperator=()=>backendState.user?.role==='operario',startHome=$('#start').
 // El operario solo marca inicio y fin: la medición es una sola actividad con la parada total.
 const totalPlan=()=>[{id:'TOTAL',name:'Cambio de setup completo'}];
 function renderDraft(){const operator=isOperator();$('#s1').classList.toggle('operator-draft',operator);// El operario inicia desde la tarjeta de preparación externa; el analista, desde su lista.
- (operator?$('.kit-heading'):startHome).appendChild($('#start'));$('#stage1Detail').textContent=operator?'Preparación externa':'Lista de actividades';$('#stage2Detail').textContent=operator?'Parada total':'Registrar cada actividad';$('.kit-card').hidden=!operator;// El plan del operario se fija al iniciar; si quedó en la tablet, el analista recupera la lista de referencia.
+ (operator?$('.kit-heading'):startHome).appendChild($('#start'));$('#stage1Detail').textContent=operator?'Preparación externa':'Lista de actividades';$('#stage2Detail').textContent=operator?'Parada total':'Registrar cada actividad';// El plan del operario se fija al iniciar; si quedó en la tablet, el analista recupera la lista de referencia.
  if(!operator&&RUN.phase===1&&RUN.plan.length===1&&RUN.plan[0].id==='TOTAL'){RUN.plan=defaultPlan();persist()}renderKit();if(!RUN.plan.length){$('#plan').style.minHeight='';$('#plan').innerHTML=''}ensureMeasurementData();$('#measurementDate').value=RUN.data.measurementDate;$('#measurementTime').value=RUN.data.measurementTime;renderPlan();tick();$('#draftNote').textContent=CFG.demo?'Modo demostración activado para esta medición.':''}
 let moveHighlightTimer=null;
 function moveActivity(index,direction){
@@ -466,7 +466,7 @@ $('#start').onclick=()=>{if(isOperator())RUN.plan=totalPlan();if(!RUN.plan.lengt
  RUN.data.measurementDate=$('#measurementDate').value;RUN.data.measurementTime=$('#measurementTime').value;
  if(RUN.plan.some(a=>!a.name.trim())){toast('Escribe un nombre para cada actividad.');return}const names=RUN.plan.map(a=>a.name.trim().toLocaleLowerCase());if(new Set(names).size!==names.length){toast('Usa nombres distintos para identificar cada actividad.');return}RUN.plan.forEach(a=>a.name=a.name.trim());
  // Sin pasos extra para el operario: si falta parte del kit, queda registrado en la medición.
- const now=Date.now();if(RUN.extStart&&!RUN.extEnd)RUN.extEnd=now;RUN.scale=RUN.extStart?RUN.scale:CFG.demo?60:1;RUN.demo=RUN.scale===60;RUN.phase=2;RUN.start=now;RUN.activityStart=now;RUN.meta=CFG.meta;RUN.withKit=RUN.soloTotal=isOperator();persist();renderRun();stage(2)};
+ const now=Date.now();if(RUN.extStart&&!RUN.extEnd)RUN.extEnd=now;RUN.scale=RUN.extStart?RUN.scale:CFG.demo?60:1;RUN.demo=RUN.scale===60;RUN.phase=2;RUN.start=now;RUN.activityStart=now;RUN.meta=CFG.meta;RUN.withKit=true;RUN.soloTotal=isOperator();persist();renderRun();stage(2)};
 function activityNow(){if(RUN.pendingRecord)return RUN.pendingRecord.entries.slice().reverse().find(e=>e.activityId===RUN.plan[RUN.idx].id&&e.type!=='Incidencia')?.minutes??0;return RUN.activityAccum+elapsed(RUN.activityStart,RUN.incident?RUN.incident.start:Date.now())}
 function addEntry(status='Registrada',end=Date.now()){const a=RUN.plan[RUN.idx];RUN.entries.push({id:uid(),activityId:a.id,name:a.name,type:RUN.repeat?'Repetición':'Actividad',minutes:RUN.activityAccum+elapsed(RUN.activityStart,end),start:RUN.activityStart,end,status,audit:[]});RUN.activityAccum=0;RUN.activityStart=end;RUN.repeat=false}
 let titleLayoutFrame=null;
