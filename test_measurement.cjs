@@ -152,3 +152,15 @@ test('iniciar con el kit incompleto pide confirmación; completo inicia directam
   complete.element('#start').onclick();
   assert.equal(complete.run('RUN.phase'), 2);
 });
+
+test('el operario inicia siempre con la lista de referencia, sin editarla', () => {
+  const state = measurement();
+  state.context.renderRun = () => {};
+  for (const id of ['measurementDate', 'measurementTime']) state.element('#' + id).reportValidity = () => true;
+  state.run(`backendState = { configured: true, user: { username: 'operario', role: 'operario' } };
+    RUN.kit = Object.fromEntries(KIT.flatMap(g => g.items).map(([id]) => [id, true]));
+    RUN.plan = [{ id: 'X', name: 'Actividad cambiada por otra persona' }]`);
+  state.element('#start').onclick();
+  assert.equal(state.run('RUN.phase'), 2);
+  assert.deepEqual(state.run('RUN.plan'), state.run('defaultPlan()'));
+});

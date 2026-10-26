@@ -9,7 +9,7 @@ correcciones, historial y análisis con exportación a CSV y Excel.
 | Rol | Usuario | Contraseña | Opciones |
 |---|---|---|---|
 | Analista | `usuario` | `artefacto` | Nuevo setup, Historial, Análisis y Configuración. |
-| Operario | `operario` | `troqueladora` | Nuevo setup. |
+| Operario | `operario` | `troqueladora` | Nuevo setup, sin editar la lista de actividades. |
 
 Cada rol ve únicamente sus secciones. El servidor también lo exige: el operario solo
 puede leer la configuración y guardar o corregir las mediciones que él registró; el
@@ -52,6 +52,10 @@ revisión de la orden (paso 1) y materiales junto a la máquina (paso 2), 10 pun
 total. Las marcas se conservan al recargar. Si inicia la parada con el kit incompleto,
 se pide confirmación y la medición guarda cuántos puntos estaban listos y cuáles faltaban;
 el resultado lo muestra.
+
+El operario no ve la lista editable de actividades para no distraerse durante el cambio:
+marca el kit, inicia el conteo y la app usa siempre la lista de referencia. El analista
+conserva la lista para ajustarla.
 
 ## Terminar una medición
 
