@@ -11,6 +11,10 @@ correcciones, historial y análisis con exportación a CSV y Excel.
 | Analista | `usuario` | `artefacto` | Nuevo setup con preparación externa, Historial, Análisis y Configuración. |
 | Operario | `operario` | `troqueladora` | Nuevo setup con preparación externa, sin editar la lista de actividades. |
 
+Al entrar se elige primero **Ingresar como analista** o **Ingresar como operario**; después
+aparece el formulario con las credenciales de ese rol a la derecha. El servidor rechaza las
+credenciales de un rol distinto al elegido.
+
 Cada rol ve únicamente sus secciones. El servidor también lo exige: el operario solo
 puede leer la configuración y guardar o corregir las mediciones que él registró; el
 historial, el análisis y los demás cambios responden 403. Al finalizar un setup, el
@@ -149,7 +153,8 @@ incluidas incidencias, omisiones y correcciones.
 - `GET /api/auth/status`: estado de configuración y sesión, con el rol del usuario.
 - El operario puede usar `GET /api/config` y `POST /api/records` (solo mediciones nuevas o
   propias, de origen Planta o Demo). El resto de rutas son del analista; el operario recibe 403.
-- `POST /api/auth/setup`, `/api/auth/login`, `/api/auth/logout`: acceso.
+- `POST /api/auth/setup`, `/api/auth/login`, `/api/auth/logout`: acceso. El inicio de sesión
+  acepta `role` (`analista` u `operario`) y responde 401 si la cuenta es de otro rol.
 - `GET /api/records`: historial.
 - `POST /api/records`: guardar o corregir una medición. `_version` evita sobrescribir
   cambios de otra sesión; los reintentos del mismo registro no lo duplican.

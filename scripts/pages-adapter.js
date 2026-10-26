@@ -12,7 +12,7 @@
  async function db(){let value=read();if(!value){const records=await samples();value={records:records.map(r=>({...r,_version:1})),config:{meta:33.6,demo:false,compare:false}};write(value)}return value}
  window.smedPagesAPI=async(path,method='GET',body={})=>{
   if(path==='/api/auth/status')return {configured:true,user:user(),databaseId:'github-pages-review-v1'};
-  if(path==='/api/auth/login'&&method==='POST'){const name=String(body.username||'').trim();if(!Object.hasOwn(ACCOUNTS,name)||ACCOUNTS[name].password!==body.password)fail('Usuario o contraseña incorrectos.');sessionStorage.setItem(SESSION,name);return{user:user()}}
+  if(path==='/api/auth/login'&&method==='POST'){const name=String(body.username||'').trim();if(!Object.hasOwn(ACCOUNTS,name)||ACCOUNTS[name].password!==body.password)fail('Usuario o contraseña incorrectos.');if(body.role&&ACCOUNTS[name].role!==body.role)fail(`Estas credenciales no son de ${body.role}. Vuelve y elige el otro rol.`);sessionStorage.setItem(SESSION,name);return{user:user()}}
   if(path==='/api/auth/logout'&&method==='POST'){sessionStorage.removeItem(SESSION);return{ok:true}}
   if(!user())fail('Inicia sesión para acceder a los registros.');
   // El operario solo hace setups nuevos: lee la meta y guarda o corrige sus propias mediciones.

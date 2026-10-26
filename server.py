@@ -156,7 +156,8 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/health' and method=='GET': self.respond({'ok':True,'storage':'SQLite'});return
             if path=='/api/auth/status' and method=='GET': self.respond({'configured':bool(db.execute("SELECT 1 FROM users WHERE role='analista'").fetchone()),'user':self.user(db),'databaseId':db.execute("SELECT value FROM metadata WHERE key='database_id'").fetchone()['value']});return
             if path in ('/api/auth/setup','/api/auth/login') and method=='POST':
-                data=self.body();username=data.get('username','');password=data.get('password','')
+                data=self.body();username=data.get('username','');password=data.get('password','');chosen=data.get('role')
+                if chosen is not None and chosen not in ('analista','operario'): raise APIError('Rol inválido.')
                 if not isinstance(username,str) or not isinstance(password,str) or not 3<=len(username.strip())<=60 or not 8<=len(password)<=200: raise APIError('Usuario o contraseña inválidos.')
                 username=username.strip()
                 if path.endswith('/setup'):
@@ -170,6 +171,8 @@ class Handler(BaseHTTPRequestHandler):
                     hashed=hash_password(password,row['salt'] if row else '00'*16)
                     if not row or not hmac.compare_digest(hashed,row['password_hash']): raise APIError('Usuario o contraseña incorrectos.',401)
                     user_id,role=row['id'],row['role']
+                    # Quien elige «Ingresar como operario» no puede entrar con la cuenta del analista, ni al revés.
+                    if chosen and role!=chosen: raise APIError(f'Estas credenciales no son de {chosen}. Vuelve y elige el otro rol.',401)
                 cookie=self.session_cookie(db,user_id);db.commit();self.respond({'user':{'username':username,'role':role}},cookie=cookie);return
             if path=='/api/auth/logout' and method=='POST':
                 self.body();cookie=SimpleCookie();cookie.load(self.headers.get('Cookie',''))
