@@ -457,9 +457,8 @@ $('#start').onclick=()=>{if(isOperator())RUN.plan=defaultPlan();if(!RUN.plan.len
  for(const id of ['measurementDate','measurementTime'])if(!$('#'+id).reportValidity())return;
  RUN.data.measurementDate=$('#measurementDate').value;RUN.data.measurementTime=$('#measurementTime').value;
  if(RUN.plan.some(a=>!a.name.trim())){toast('Escribe un nombre para cada actividad.');return}const names=RUN.plan.map(a=>a.name.trim().toLocaleLowerCase());if(new Set(names).size!==names.length){toast('Usa nombres distintos para identificar cada actividad.');return}RUN.plan.forEach(a=>a.name=a.name.trim());
- const kit=kitSummary();if(kit.faltantes.length)return ask('Kit de materiales incompleto',`Faltan ${kit.faltantes.length} de ${kit.total} materiales: ${kit.faltantes.join(', ')}. Si inicias ahora, quedará registrado en la medición.`,'',startMeasurement);
- startMeasurement()};
-function startMeasurement(){const now=Date.now();if(RUN.extStart&&!RUN.extEnd)RUN.extEnd=now;RUN.scale=RUN.extStart?RUN.scale:CFG.demo?60:1;RUN.demo=RUN.scale===60;RUN.phase=2;RUN.start=now;RUN.activityStart=now;RUN.meta=CFG.meta;persist();renderRun();stage(2)}
+ // Sin pasos extra para el operario: si falta parte del kit, queda registrado en la medición.
+ const now=Date.now();if(RUN.extStart&&!RUN.extEnd)RUN.extEnd=now;RUN.scale=RUN.extStart?RUN.scale:CFG.demo?60:1;RUN.demo=RUN.scale===60;RUN.phase=2;RUN.start=now;RUN.activityStart=now;RUN.meta=CFG.meta;persist();renderRun();stage(2)};
 function activityNow(){if(RUN.pendingRecord)return RUN.pendingRecord.entries.slice().reverse().find(e=>e.activityId===RUN.plan[RUN.idx].id&&e.type!=='Incidencia')?.minutes??0;return RUN.activityAccum+elapsed(RUN.activityStart,RUN.incident?RUN.incident.start:Date.now())}
 function addEntry(status='Registrada',end=Date.now()){const a=RUN.plan[RUN.idx];RUN.entries.push({id:uid(),activityId:a.id,name:a.name,type:RUN.repeat?'Repetición':'Actividad',minutes:RUN.activityAccum+elapsed(RUN.activityStart,end),start:RUN.activityStart,end,status,audit:[]});RUN.activityAccum=0;RUN.activityStart=end;RUN.repeat=false}
 let titleLayoutFrame=null;
