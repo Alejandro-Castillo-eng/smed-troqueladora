@@ -8,8 +8,8 @@ correcciones, historial y análisis con exportación a CSV y Excel.
 
 | Rol | Usuario | Contraseña | Opciones |
 |---|---|---|---|
-| Analista | `usuario` | `artefacto` | Nuevo setup, Historial, Análisis y Configuración. |
-| Operario | `operario` | `troqueladora` | Nuevo setup, sin editar la lista de actividades. |
+| Analista | `usuario` | `artefacto` | Nuevo setup (sin preparación externa), Historial, Análisis y Configuración. |
+| Operario | `operario` | `troqueladora` | Nuevo setup con preparación externa, sin editar la lista de actividades. |
 
 Cada rol ve únicamente sus secciones. El servidor también lo exige: el operario solo
 puede leer la configuración y guardar o corregir las mediciones que él registró; el
@@ -47,8 +47,9 @@ derivada mediante PBKDF2 y sesión en cookie HttpOnly.
 
 ## Preparación externa
 
-En **Preparar la medición** el operario marca, con la máquina todavía produciendo, dos grupos,
-cada uno con su avance:
+En **Preparar la medición** el operario (solo él; el analista no ve esta tarjeta y sus
+mediciones no guardan kit) marca, con la máquina todavía produciendo, dos grupos, cada uno
+con su avance:
 
 - **Materiales y herramientas a la mano (6):** troquel verificado, láminas en el carrito,
   herramientas de ajuste, plantilla, ficha técnica y lugar libre para el troquel que se retira.
