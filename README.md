@@ -45,13 +45,18 @@ Abre http://127.0.0.1:8080. Los accesos de revisión del analista y del operario
 revisión del profesor. La autenticación se valida en el servidor, con contraseña
 derivada mediante PBKDF2 y sesión en cookie HttpOnly.
 
-## Kit de materiales
+## Preparación externa
 
-En **Preparar la medición** el operario marca el kit externo del siguiente pedido:
-revisión de la orden (paso 1) y materiales junto a la máquina (paso 2), 10 puntos en
-total. Las marcas se conservan al recargar. La parada se inicia aunque el kit esté
-incompleto, sin preguntas: la medición guarda cuántos puntos estaban listos y cuáles
-faltaban, y el resultado lo muestra.
+En **Preparar la medición** el operario marca, con la máquina todavía produciendo, dos grupos
+de 5 puntos, cada uno con su avance:
+
+- **Materiales y herramientas a la mano:** troquel, láminas, herramientas de ajuste,
+  plantilla y ficha técnica.
+- **Actividades hechas con la máquina en marcha:** revisión de la orden (código, dimensiones,
+  cartón, calidad) e inspección y limpieza del troquel.
+
+Las marcas se conservan al recargar. La parada se inicia aunque falten puntos, sin preguntas:
+la medición guarda, por grupo, cuántos estaban listos y cuáles faltaban, y el resultado lo muestra.
 
 El operario no ve la lista editable de actividades para no distraerse durante el cambio:
 marca el kit, inicia el conteo y la app usa siempre la lista de referencia. El analista
