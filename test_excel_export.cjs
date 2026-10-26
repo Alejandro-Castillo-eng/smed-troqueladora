@@ -79,7 +79,7 @@ test('la hoja Detalle reproduce la tabla del historial', () => {
     record([activity('Preparar', 20), activity('Ajustar', 33.666)], { fecha: '2026-10-11', horaInicio: '14:11:00', horaFin: '15:04:40', _registradoPor: { username: 'operario', role: 'operario' } }),
   ];
   assert.deepEqual(run('historyExportRows(records)').slice(1), [
-    ['2026-10-19', '23:39:57', '23:40:02', 0.08, 'Con omisiones', 2, '—'],
+    ['2026-10-19', '23:39:57', '23:40:02', 0.08, 'Con omisiones', 2, 'Otro operario'],
     ['2026-10-11', '14:11:00', '15:04:40', 53.67, 'Completa', 0, 'Operario · operario'],
   ]);
 });

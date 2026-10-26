@@ -69,7 +69,7 @@ El analista sigue midiendo actividad por actividad.
 
 El Historial y la hoja Detalle del Excel incluyen **Registrado por** (Analista u Operario
 y su usuario). Lo calcula el servidor a partir de quién creó la medición; las anteriores
-a los roles muestran «—».
+a los roles, incluidos los ejemplos, figuran como «Otro operario».
 
 ## Terminar una medición
 
