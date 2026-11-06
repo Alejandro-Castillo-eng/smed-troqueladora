@@ -6,10 +6,14 @@ correcciones, historial y análisis con exportación a CSV y Excel.
 
 ## Usuarios y roles
 
-| Rol | Usuario | Contraseña | Opciones |
-|---|---|---|---|
-| Analista | `usuario` | `artefacto` | Nuevo setup con preparación externa, Historial, Análisis y Configuración. |
-| Operario | `operario` | `troqueladora` | Nuevo setup con preparación externa, sin editar la lista de actividades. |
+| Rol | Usuario | Opciones |
+|---|---|---|
+| Analista | `usuario` | Nuevo setup con preparación externa, Historial, Análisis y Configuración. |
+| Operario | `operario` | Nuevo setup con preparación externa, sin editar la lista de actividades. |
+
+En el servidor local las contraseñas de revisión son `artefacto` (analista) y
+`troqueladora` (operario). La aplicación publicada usa otras contraseñas, que no están
+en el repositorio ni en la pantalla: se entregan aparte a cada rol.
 
 Al entrar se elige primero **Ingresar como analista** o **Ingresar como operario**; después
 aparece el formulario con las credenciales de ese rol a la derecha. El servidor rechaza las
@@ -24,17 +28,42 @@ operario vuelve a preparar el siguiente y el analista ve la medición en el Hist
 
 https://alejandro-castillo-eng.github.io/smed-troqueladora/
 
-Analista: **usuario** / **artefacto** · Operario: **operario** / **troqueladora**.
+La versión publicada guarda las mediciones en una base de datos compartida de
+**Supabase** (proyecto `smed-troqueladora`, región São Paulo). Lo que registra el
+operario en la planta lo ve el analista desde cualquier equipo, en Historial y Análisis,
+y se puede exportar a Excel. La sesión dura 12 horas y se conserva al recargar.
 
 El workflow `Publicar aplicación en GitHub Pages` publica automáticamente al cambiar
-la rama `main`. El deployment aparece en el entorno `github-pages` del repositorio.
-La versión de revisión mantiene las pantallas y los 24 ejemplos, pero guarda las
-mediciones en el navegador de cada visitante: no comparte registros entre equipos.
-Su acceso es una demostración de interfaz, no autenticación de servidor.
+la rama `main`. El script `scripts/build_pages.py` toma `index.html`, le añade
+`scripts/supabase-adapter.js` y quita el recuadro de credenciales.
 
-GitHub Pages no ejecuta Python. El backend con SQLite queda disponible para ejecución
-local; el script `scripts/build_pages.py` prepara por separado la versión estática.
-Solo se publican HTML, JavaScript y ejemplos simulados, sin base de datos ni sesiones.
+### Cómo se protege la base de datos
+
+- Las tablas están en el esquema privado `smed`, que la API de Supabase no expone. La
+  clave publicable que va en la página no permite leerlas ni modificarlas.
+- La página solo puede llamar a las funciones `public.smed_*`
+  (`supabase/migrations/20261103000000_smed.sql`). Cada una revisa la sesión y el rol con
+  las mismas reglas que `server.py`: el operario lee la meta y guarda o corrige sus
+  propias mediciones; el historial, el análisis, la configuración y los borrados son
+  del analista.
+- Las contraseñas se guardan con bcrypt y las sesiones como hash SHA-256 del token.
+  Tras 10 intentos fallidos en 15 minutos, ese usuario queda bloqueado 15 minutos.
+
+### Cambiar una contraseña
+
+En el panel de Supabase, **SQL Editor**:
+
+```sql
+update smed.users set password_hash = extensions.crypt('NuevaClave123', extensions.gen_salt('bf', 10))
+ where username = 'operario';
+delete from smed.sessions where user_id = (select id from smed.users where username = 'operario');
+```
+
+### Plan gratuito
+
+Supabase pausa los proyectos gratuitos después de 7 días sin actividad. Los datos no
+se pierden: se reactiva desde el panel de Supabase con **Restore project**. Mientras
+esté pausado, la página muestra un error de conexión al iniciar sesión.
 
 ## Ejecutar el backend local
 
@@ -95,9 +124,11 @@ sus usuarios y sesiones **no se suben a GitHub**.
 
 ## Datos de ejemplo
 
-En el primer arranque se generan **24 registros identificados como Simulado**,
+En el servidor local, el primer arranque genera **24 registros identificados como Simulado**,
 repartidos entre varios días y horas. Incluyen actividades normales, repeticiones
-y omisiones. Son ejemplos inventados, no mediciones reales de planta.
+y omisiones. Son ejemplos inventados, no mediciones reales de planta. La versión publicada
+empieza vacía, para que solo contenga mediciones reales; el analista puede cargar los
+ejemplos con **Restablecer registros simulados** en Configuración.
 
 El análisis reúne automáticamente Planta, Simulado y Piloto. Los datos Demo se excluyen;
 las mediciones con omisiones se conservan en el historial y su detalle. El promedio
@@ -125,11 +156,11 @@ python -m unittest test_backend -v
 Las pruebas utilizan una base temporal y verifican acceso por rol, migración de cuentas, persistencia, validación,
 importación, correcciones concurrentes, guardado idempotente y renovación de ejemplos.
 
-La medición, la exportación Excel y las pantallas de cada rol se comprueban con
+La medición, la exportación Excel, las pantallas de cada rol y el adaptador de Supabase se comprueban con
 Node.js 18 o posterior, sin instalar paquetes:
 
 ```sh
-node --test test_excel_export.cjs test_measurement.cjs test_access.cjs
+node --test test_excel_export.cjs test_measurement.cjs test_access.cjs test_supabase_adapter.cjs
 ```
 
 ## Exportar Excel
@@ -165,8 +196,9 @@ incluidas incidencias, omisiones y correcciones.
 
 ## Alcance
 
-Este servidor está pensado para uso local o una prueba en planta. GitHub almacena
-el código; no ejecuta el backend. Para acceso por Internet se necesita un host con
-Python, disco persistente y HTTPS; con HTTPS establece `SMED_SECURE_COOKIE=1`.
+`server.py` está pensado para uso local o una prueba en planta. Para el acceso por
+Internet se usa la versión publicada en GitHub Pages con Supabase. Si se quisiera alojar
+`server.py`, se necesita un host con Python, disco persistente y HTTPS; con HTTPS
+establece `SMED_SECURE_COOKIE=1`.
 Los accesos de revisión se configuran al iniciar la instalación. No hay registro público de
-más usuarios, recuperación de contraseña por correo ni despliegue automático.
+más usuarios ni recuperación de contraseña por correo.
