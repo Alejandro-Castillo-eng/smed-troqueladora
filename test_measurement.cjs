@@ -151,23 +151,31 @@ test('«ver pasos» funciona sin el kit completo y la parada se inicia registran
   assert(record.kit.grupos[1].faltantes.includes('Herramientas de ajuste (llaves y calibrador)'));
 });
 
-test('solo se escribe el número de pedido, sin cronómetro de preparación externa', () => {
+test('solo se escribe el número de pedido y el cronómetro externo va del pedido al checklist completo', () => {
   const state = measurement(); ready(state);
   state.element('#orderInput').value = ' p-0249 ';
   state.element('#orderInput').onchange();
   assert.equal(state.run('RUN.order'), 'P-0249');
   assert.equal(state.element('#orderInput').value, 'P-0249');
-  assert.equal(state.run('RUN.extStart'), null);
+  assert.equal(state.run('RUN.extStart'), state.clock.now);
+  state.clock.now += 3 * 60000;
+  state.run(`RUN.kit = ${FULL_KIT}; updateExternalClock(); renderKitCount()`);
+  assert.equal(state.run('RUN.extEnd'), state.clock.now);
+  assert.equal(state.element('#extClock').textContent, '03:00');
+  state.clock.now += 60000;
+  assert.equal(state.element('#extClock').textContent, '03:00');
   state.element('#orderInput').value = '12345';
   state.element('#orderInput').onchange();
   assert.equal(state.run('RUN.order'), '12345');
+  assert.equal(state.run('RUN.extStart'), state.clock.now - 4 * 60000);
 });
 
-test('la medición guarda el kit y el pedido', async () => {
+test('la medición guarda el kit, el pedido y la preparación externa', async () => {
   const state = measurement(); ready(state, { username: 'usuario', role: 'analista' });
   state.element('#orderInput').value = 'P-0250';
   state.element('#orderInput').onchange();
-  state.run(`RUN.kit = ${FULL_KIT}`);
+  state.clock.now += 5 * 60000;
+  state.run(`RUN.kit = ${FULL_KIT}; updateExternalClock()`);
   state.element('#start').onclick();
   assert.equal(state.run('RUN.phase'), 2);
   assert.equal(state.run('RUN.withKit'), true);
@@ -177,7 +185,7 @@ test('la medición guarda el kit y el pedido', async () => {
   await state.context.finishEarly();
   assert.deepEqual([record.kit.listos, record.kit.total, record.kit.faltantes.length], [10, 10, 0]);
   assert.deepEqual(record.kit.grupos.map(g => [g.key, g.listos, g.total]), [['orden', 4, 4], ['kit', 6, 6]]);
-  assert.equal(record.external, 0);
+  assert.equal(record.external, 5);
   assert.deepEqual(record.pedido, { numero: 'P-0250' });
   assert.deepEqual(state.run('RUN.kit'), {});
   assert.equal(state.run('RUN.order'), null);
