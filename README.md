@@ -62,8 +62,8 @@ completan dos tarjetas:
   cartón, calidad y tolerancias) y *Paso 2 · Kit del siguiente pedido* (troquel verificado e
   inspeccionado, láminas en el carrito, herramientas, plantilla y ficha técnica): 10 puntos.
 
-El botón **Kit completo · ver pasos** se activa con los 10 puntos y muestra los pasos siguientes
-con **Iniciar parada y medición**; con el kit incompleto la parada no se inicia. Las marcas, el
+El botón **Kit completo · ver pasos** muestra los pasos siguientes con **Iniciar parada y
+medición**, aunque falten puntos: la medición guarda, por paso, cuáles faltaban. Las marcas, el
 pedido y el cronómetro se conservan al recargar. La medición guarda el kit, el pedido y los minutos
 de preparación externa, y el resultado los muestra.
 
