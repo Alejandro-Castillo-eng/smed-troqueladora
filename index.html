@@ -400,6 +400,9 @@ if(!load(K_RUN,null)&&oldRun){
  save(K_RUN,RUN);
 }
 if(RUN.phase===1&&!RUN.plan.length){RUN.plan=defaultPlan();save(K_RUN,RUN)}
+// Al recargar, la preparación externa empieza de cero; una parada ya iniciada se conserva.
+const resetPreparation=()=>Object.assign(RUN,{order:'',kit:{},extStart:null,extEnd:null,stepsShown:false});
+if(RUN.phase===1){resetPreparation();save(K_RUN,RUN)}
 function persist(){save(K_RUN,RUN)}
 const elapsed=(a,b=Date.now())=>Math.max(0,(b-a)/60000*RUN.scale);
 function entriesOf(r){if(r.entries)return r.entries;return STEPS.slice(2,15).map((s,i)=>({id:r.id+'-'+i,activityId:'P'+s.n,name:s.name,type:'Actividad',minutes:r.t[i+2]||0,status:'Registrada',audit:[]})).concat(r.exc?[{id:r.id+'-exc',name:'Reproceso',type:'Incidencia',minutes:r.exc,status:'Registrada',audit:[]}]:[])}
@@ -475,7 +478,10 @@ function renderKit(){
 }
 function setOrder(value){
  // Un pedido registrado se guarda con su número completo (P-0249).
- RUN.order=ORDERS[orderKey(value)]?orderKey(value):normalizeOrder(value);
+ const order=ORDERS[orderKey(value)]?orderKey(value):normalizeOrder(value),changed=!!RUN.order&&order!==RUN.order;
+ // Otro pedido es otra preparación: el cronómetro vuelve a empezar y el kit se desmarca.
+ if(changed){resetPreparation();renderKit()}
+ RUN.order=order;
  if(RUN.order&&!RUN.extStart){RUN.extStart=Date.now();RUN.scale=CFG.demo?60:1}
  updateExternalClock();persist();renderKitCount();
 }
