@@ -132,24 +132,23 @@ test('el kit tiene la revisión de la orden (4) y el kit del siguiente pedido (6
   assert.equal(state.run('kitSummary().total'), 10);
 });
 
-test('sin el kit completo no se inicia la parada ni se activa «ver pasos»', () => {
+test('«ver pasos» funciona sin el kit completo y la parada se inicia registrando lo que faltaba', async () => {
   const state = measurement(); ready(state);
-  let message;
-  state.context.toast = text => { message = text; };
+  state.context.ask = () => { throw new Error('no debe preguntar'); };
   state.run(`RUN.kit = { 'orden-codigo': true }; renderKitCount()`);
-  assert.equal(state.element('#kitDone').disabled, true);
   assert.equal(state.element('#kitCount').textContent, '1 de 10 listos');
-  state.element('#start').onclick();
-  assert.equal(state.run('RUN.phase'), 1);
-  assert.match(message, /10 de 10/);
-  state.run(`RUN.kit = ${FULL_KIT}; renderKitCount()`);
-  assert.equal(state.element('#kitDone').disabled, false);
   assert.equal(state.element('#nextSteps').hidden, true);
   state.element('#kitDone').onclick();
   assert.equal(state.element('#nextSteps').hidden, false);
-  state.run(`RUN.kit['kit-ficha'] = false; renderKitCount()`);
-  assert.equal(state.element('#nextSteps').hidden, true);
-  assert.equal(state.run('RUN.stepsShown'), false);
+  state.run(`RUN.kit['orden-codigo'] = false; renderKitCount()`);
+  assert.equal(state.element('#nextSteps').hidden, false);
+  state.element('#start').onclick();
+  assert.equal(state.run('RUN.phase'), 2);
+  let record;
+  state.context.saveRecord = async value => { record = copy(value); };
+  await state.context.finishEarly();
+  assert.deepEqual([record.kit.listos, record.kit.total, record.kit.faltantes.length], [0, 10, 10]);
+  assert(record.kit.grupos[1].faltantes.includes('Herramientas de ajuste (llaves y calibrador)'));
 });
 
 test('solo se escribe el número de pedido y el cronómetro externo va del pedido al checklist completo', () => {
