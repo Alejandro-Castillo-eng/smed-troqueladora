@@ -53,21 +53,25 @@ derivada mediante PBKDF2 y sesión en cookie HttpOnly.
 
 ## Preparación externa
 
-En **Preparar la medición** el operario y el analista marcan, con la máquina todavía
-produciendo, dos grupos, cada uno con su avance:
+En **Preparar la medición**, con la máquina todavía produciendo, el operario y el analista
+completan dos tarjetas:
 
-- **Materiales y herramientas a la mano (6):** troquel verificado, láminas en el carrito,
-  herramientas de ajuste, plantilla, ficha técnica y lugar libre para el troquel que se retira.
-- **Actividades hechas con la máquina en marcha (5):** revisar la orden, inspeccionar y limpiar
-  el troquel nuevo, ordenar la zona, anotar presión, velocidad y registro, y avisar a calidad
-  para aprobar la primera pieza. Buscan acortar las actividades más largas de la parada.
+- **Datos del cambio:** se escribe la orden o pedido. Con los pedidos de ejemplo
+  (`P-0249`, `P-0250`, `P-0251`, con los productos del piloto) se llenan solos el producto,
+  la cantidad, la medida y el troquel; otro número se acepta sin autollenado. El cronómetro
+  de **preparación externa** empieza al ingresar el pedido y se detiene al completar el checklist.
+- **Kit de materiales:** *Paso 1 · Revisión de la orden* (código y cantidad, dimensiones,
+  cartón, calidad y tolerancias) y *Paso 2 · Kit del siguiente pedido* (troquel verificado e
+  inspeccionado, láminas en el carrito, herramientas, plantilla y ficha técnica): 10 puntos.
 
-Las marcas se conservan al recargar. La parada se inicia aunque falten puntos, sin preguntas:
-la medición guarda, por grupo, cuántos estaban listos y cuáles faltaban, y el resultado lo muestra.
+El botón **Kit completo · ver pasos** se activa con los 10 puntos y muestra los pasos siguientes
+con **Iniciar parada y medición**; con el kit incompleto la parada no se inicia. Las marcas, el
+pedido y el cronómetro se conservan al recargar. La medición guarda el kit, el pedido y los minutos
+de preparación externa, y el resultado los muestra.
 
 El operario no ve la lista editable de actividades para no distraerse durante el cambio:
-marca la preparación externa, presiona **Iniciar parada y medición** (arriba, en la misma
-tarjeta) y, al acabar,
+completa la preparación externa, presiona **Kit completo · ver pasos**, luego **Iniciar
+parada y medición** y, al acabar,
 **Terminar medición**. Mientras tanto solo ve el cronómetro de la parada total. Su medición
 se guarda como **solo parada total**: entra al Historial, a la evolución y al cumplimiento
 de la meta, pero no al Pareto, a la variación ni a las columnas por actividad del Excel.
