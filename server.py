@@ -171,8 +171,13 @@ class Handler(BaseHTTPRequestHandler):
                     hashed=hash_password(password,row['salt'] if row else '00'*16)
                     if not row or not hmac.compare_digest(hashed,row['password_hash']): raise APIError('Usuario o contraseña incorrectos.',401)
                     user_id,role=row['id'],row['role']
-                    # Quien elige «Ingresar como operario» no puede entrar con la cuenta del analista, ni al revés.
-                    if chosen and role!=chosen: raise APIError(f'Estas credenciales no son de {chosen}. Vuelve y elige el otro rol.',401)
+                    # El acceso del operario no admite la cuenta del analista, ni «Cambiar a analista» la del operario.
+                    if chosen and role!=chosen: raise APIError(f'Estas credenciales no son de {chosen}.',401)
+                # Al cambiar de usuario se cierra la sesión anterior del navegador.
+                previous=SimpleCookie()
+                try: previous.load(self.headers.get('Cookie',''))
+                except Exception: pass
+                if 'smed_session' in previous: db.execute('DELETE FROM user_sessions WHERE token_hash=?',(hashlib.sha256(previous['smed_session'].value.encode()).hexdigest(),))
                 cookie=self.session_cookie(db,user_id);db.commit();self.respond({'user':{'username':username,'role':role}},cookie=cookie);return
             if path=='/api/auth/logout' and method=='POST':
                 self.body();cookie=SimpleCookie();cookie.load(self.headers.get('Cookie',''))

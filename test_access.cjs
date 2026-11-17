@@ -13,38 +13,56 @@ function screens(user) {
   const hidden = id => element('#' + id).hidden;
   return { login: hidden('loginScreen'), app: hidden('appMain'), nav: hidden('appNav'),
     account: element('#accountName').textContent, views: run(`['nuevo', 'hist', 'dash', 'conf'].filter(canView)`),
-    operatorMode: element('#appMain').classList.contains('operator-mode') };
+    operatorMode: element('#appMain').classList.contains('operator-mode'), switchAnalyst: element('#switchAnalyst').hidden };
 }
 
 test('el analista conserva todas las secciones', () => {
   assert.deepEqual(screens({ username: 'usuario', role: 'analista' }),
-    { login: true, app: false, nav: false, account: 'Analista · usuario', views: ['nuevo', 'hist', 'dash', 'conf'], operatorMode: false });
+    { login: true, app: false, nav: false, account: 'Analista · usuario', views: ['nuevo', 'hist', 'dash', 'conf'], operatorMode: false, switchAnalyst: true });
 });
 
 test('el operario solo tiene la sección Nuevo setup, sin la lista de actividades al medir', () => {
   assert.deepEqual(screens({ username: 'operario', role: 'operario' }),
-    { login: true, app: false, nav: false, account: 'Operario · operario', views: ['nuevo'], operatorMode: true });
+    { login: true, app: false, nav: false, account: 'Operario · operario', views: ['nuevo'], operatorMode: true, switchAnalyst: false });
 });
 
 test('sin sesión solo se muestra el inicio de sesión', () => {
-  assert.deepEqual(screens(null), { login: false, app: true, nav: true, account: '', views: [], operatorMode: false });
+  assert.deepEqual(screens(null), { login: false, app: true, nav: true, account: '', views: [], operatorMode: false, switchAnalyst: true });
 });
 
-test('sin sesión primero se elige el rol y luego aparecen sus credenciales', () => {
-  const { context, element, run } = app();
+test('sin sesión se pide directo el usuario y la contraseña del operario', () => {
+  const { context, element } = app();
   context.renderDraft = () => {};
   vm.runInContext(`backendState = { configured: true, user: null, databaseId: 'test' }; renderAccess()`, context);
-  assert.equal(element('#roleChoice').hidden, false);
-  assert.equal(element('#loginGrid').hidden, true);
-  vm.runInContext(`chooseLoginRole('operario')`, context);
-  assert.equal(run('loginRole'), 'operario');
-  assert.equal(element('#roleChoice').hidden, true);
-  assert.equal(element('#loginGrid').hidden, false);
   assert.equal(element('#loginRolePill').textContent, 'Operario');
   assert.equal(element('#loginIntro').textContent, 'Ingresa con tu usuario de operario.');
-  element('#backToRoles').onclick();
-  assert.equal(run('loginRole'), null);
-  assert.equal(element('#roleChoice').hidden, false);
+  const html = readFileSync(`${__dirname}/index.html`, 'utf8');
+  assert.doesNotMatch(html, /Ingresar como analista|Elegir otro rol/);
+  assert.match(html, /<div class="access-role" data-role="analista" hidden>/);
+});
+
+test('solo el operario ve «Cambiar a analista» y el cambio inicia la sesión del analista', async () => {
+  const operator = screens({ username: 'operario', role: 'operario' });
+  assert.equal(operator.switchAnalyst, false);
+  assert.equal(screens({ username: 'usuario', role: 'analista' }).switchAnalyst, true);
+  const { context, element, run } = app();
+  context.sessionStorage = { getItem: () => 'true', setItem() {}, removeItem() {} };
+  context.renderDraft = () => {};
+  context.stage = () => {};
+  const calls = [];
+  vm.runInContext(`backendState = { configured: true, user: { username: 'operario', role: 'operario' }, databaseId: 'test' }; renderAccess();
+    ask = (title, help, fields, action) => { promptTitle = title; promptRun = action; };
+    loadBackendData = async () => {};`, context);
+  context.api = async (path, method, body) => { calls.push({ path, body }); return { user: { username: 'usuario', role: 'analista' } }; };
+  vm.runInContext('api = globalThis.api', context);
+  element('#switchAnalyst').onclick();
+  assert.equal(run('promptTitle'), 'Cambiar a analista');
+  element('#switchUser').value = ' usuario ';
+  element('#switchPassword').value = 'artefacto';
+  assert.equal(await vm.runInContext('promptRun()', context), undefined);
+  assert.deepEqual(calls.map(c => ({ ...c, body: { ...c.body } })), [{ path: '/api/auth/login', body: { username: 'usuario', password: 'artefacto', role: 'analista' } }]);
+  assert.equal(element('#accountName').textContent, 'Analista · usuario');
+  assert.equal(element('#switchAnalyst').hidden, true);
 });
 
 test('la versión de GitHub Pages admite ambos usuarios y reserva los registros al analista', async () => {
