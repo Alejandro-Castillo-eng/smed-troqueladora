@@ -56,15 +56,18 @@ derivada mediante PBKDF2 y sesión en cookie HttpOnly.
 En **Preparar la medición**, con la máquina todavía produciendo, el operario y el analista
 completan dos tarjetas:
 
-- **Datos del cambio:** solo se escribe el número de la orden o pedido. El tiempo se mide
-  después, en **Medir**.
+- **Datos del cambio:** solo se escribe el número de la orden o pedido; si el pedido está
+  registrado se completan solos el cliente, el producto, la cantidad, la medida y el código de
+  troquel (por ahora, `P-0249`). Acepta `P-0249`, `p0249` o `249`. El cronómetro
+  de **preparación externa** empieza al ingresar el pedido y se detiene al completar el checklist.
 - **Kit de materiales:** *Paso 1 · Revisión de la orden* (código y cantidad, dimensiones,
   cartón, calidad y tolerancias) y *Paso 2 · Kit del siguiente pedido* (troquel verificado e
   inspeccionado, láminas en el carrito, herramientas, plantilla y ficha técnica): 10 puntos.
 
 El botón **Kit completo · ver pasos** muestra los pasos siguientes con **Iniciar parada y
-medición**, aunque falten puntos: la medición guarda, por paso, cuáles faltaban. Las marcas y el
-pedido se conservan al recargar. La medición guarda el kit y el pedido, y el resultado los muestra.
+medición**, aunque falten puntos: la medición guarda, por paso, cuáles faltaban. Las marcas, el
+pedido y el cronómetro se conservan al recargar. La medición guarda el kit, el pedido y los minutos
+de preparación externa, y el resultado los muestra.
 
 El operario no ve la lista editable de actividades para no distraerse durante el cambio:
 completa la preparación externa, presiona **Kit completo · ver pasos**, luego **Iniciar
