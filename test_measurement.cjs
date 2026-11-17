@@ -152,26 +152,23 @@ test('sin el kit completo no se inicia la parada ni se activa «ver pasos»', ()
   assert.equal(state.run('RUN.stepsShown'), false);
 });
 
-test('el pedido se completa solo y el cronómetro externo va del pedido al checklist completo', () => {
+test('solo se escribe el número de pedido y el cronómetro externo va del pedido al checklist completo', () => {
   const state = measurement(); ready(state);
-  assert.equal(state.run(`normalizeOrder(' p0249 ')`), 'P-0249');
-  assert.equal(state.run(`normalizeOrder('249')`), 'P-0249');
-  state.element('#orderInput').value = 'p-0249';
-  state.element('#orderInput').oninput();
+  state.element('#orderInput').value = ' p-0249 ';
+  state.element('#orderInput').onchange();
   assert.equal(state.run('RUN.order'), 'P-0249');
+  assert.equal(state.element('#orderInput').value, 'P-0249');
   assert.equal(state.run('RUN.extStart'), state.clock.now);
-  assert.match(state.element('#orderInfo').innerHTML, /BASE DE TORTA #20 - DUPLEX BLANCO/);
-  assert.match(state.element('#orderInfo').innerHTML, /TRQ-020/);
   state.clock.now += 3 * 60000;
   state.run(`RUN.kit = ${FULL_KIT}; updateExternalClock(); renderKitCount()`);
   assert.equal(state.run('RUN.extEnd'), state.clock.now);
   assert.equal(state.element('#extClock').textContent, '03:00');
   state.clock.now += 60000;
   assert.equal(state.element('#extClock').textContent, '03:00');
-  state.element('#orderInput').value = 'P-9999';
+  state.element('#orderInput').value = '12345';
   state.element('#orderInput').onchange();
-  assert.match(state.element('#orderInfo').innerHTML, /No hay datos de ejemplo/);
-  assert.equal(state.run('RUN.extEnd'), state.clock.now - 60000);
+  assert.equal(state.run('RUN.order'), '12345');
+  assert.equal(state.run('RUN.extStart'), state.clock.now - 4 * 60000);
 });
 
 test('la medición guarda el kit, el pedido y la preparación externa', async () => {
@@ -190,7 +187,7 @@ test('la medición guarda el kit, el pedido y la preparación externa', async ()
   assert.deepEqual([record.kit.listos, record.kit.total, record.kit.faltantes.length], [10, 10, 0]);
   assert.deepEqual(record.kit.grupos.map(g => [g.key, g.listos, g.total]), [['orden', 4, 4], ['kit', 6, 6]]);
   assert.equal(record.external, 5);
-  assert.deepEqual(record.pedido, { numero: 'P-0250', producto: 'BASE DE TORTA #30*40 - BLANCO PLASTIFICADO', cantidad: '3 000 unidades', medida: '30 × 40 cm', troquel: 'TRQ-3040' });
+  assert.deepEqual(record.pedido, { numero: 'P-0250' });
   assert.deepEqual(state.run('RUN.kit'), {});
   assert.equal(state.run('RUN.order'), null);
 });
