@@ -175,6 +175,16 @@ test('el pedido conocido completa sus datos y el cronómetro externo va del pedi
   assert.match(state.element('#orderInfo').textContent, /No hay datos registrados para el pedido 12345/);
 });
 
+test('hay varios pedidos registrados con todos sus datos', () => {
+  const state = measurement();
+  const orders = state.run('ORDERS');
+  assert.deepEqual(Object.keys(orders), ['P-0249', 'P-0250', 'P-0251', 'P-0252', 'P-0253', 'P-0254', 'P-0255']);
+  for (const [numero, order] of Object.entries(orders))
+    assert.deepEqual(Object.keys(order), ['cliente', 'producto', 'cantidad', 'medida', 'troquel'], numero);
+  assert.equal(state.run(`orderData('252').producto`), 'BASE DE TORTA #30*40 - BLANCO PLASTIFICADO');
+  assert.match(state.element('#orderList').innerHTML, /<option value="P-0255">/);
+});
+
 test('la medición guarda el kit, el pedido y la preparación externa', async () => {
   const state = measurement(); ready(state, { username: 'usuario', role: 'analista' });
   state.element('#orderInput').value = 'P-0249';

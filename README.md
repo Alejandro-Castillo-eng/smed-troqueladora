@@ -58,7 +58,8 @@ completan dos tarjetas:
 
 - **Datos del cambio:** solo se escribe el número de la orden o pedido; si el pedido está
   registrado se completan solos el cliente, el producto, la cantidad, la medida y el código de
-  troquel (por ahora, `P-0249`). Acepta `P-0249`, `p0249` o `249`. El cronómetro
+  troquel. Hay pedidos de ejemplo del `P-0249` al `P-0255`, que el campo sugiere al escribir.
+  Acepta `P-0249`, `p0249` o `249`. El cronómetro
   de **preparación externa** empieza al ingresar el pedido y se detiene al completar el checklist.
 - **Kit de materiales:** *Paso 1 · Revisión de la orden* (código y cantidad, dimensiones,
   cartón, calidad y tolerancias) y *Paso 2 · Kit del siguiente pedido* (troquel verificado e
