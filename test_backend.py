@@ -58,6 +58,19 @@ class BackendTests(unittest.TestCase):
         code,data=self.request('/api/auth/login','POST',{'username':'usuario','password':'artefacto','role':'operario'});self.assertEqual(code,401);self.assertIn('no son de operario',data['error'])
         self.assertEqual(self.request('/api/auth/login','POST',{'username':'operario','password':'troqueladora','role':'operario'})[1]['user']['role'],'operario')
         self.assertEqual(self.request('/api/auth/login','POST',{'username':'operario','password':'troqueladora','role':'jefe'})[0],400)
+    def test_operator_switches_to_analyst_in_the_same_browser(self):
+        browser=build_opener(HTTPCookieProcessor(CookieJar()))
+        self.request('/api/auth/login','POST',{'username':'operario','password':'troqueladora','role':'operario'},client=browser)
+        def sessions():
+            with server.connect(self.path) as db:return db.execute('SELECT COUNT(*) FROM user_sessions').fetchone()[0]
+        self.assertEqual(sessions(),1)
+        code,data=self.request('/api/auth/login','POST',{'username':'operario','password':'troqueladora','role':'analista'},client=browser)
+        self.assertEqual(code,401);self.assertIn('no son de analista',data['error'])
+        self.assertEqual(self.request('/api/auth/status',client=browser)[1]['user']['role'],'operario')
+        self.assertEqual(self.request('/api/auth/login','POST',{'username':'usuario','password':'artefacto','role':'analista'},client=browser)[1]['user']['role'],'analista')
+        self.assertEqual(self.request('/api/auth/status',client=browser)[1]['user'],{'username':'usuario','role':'analista'})
+        self.assertEqual(self.request('/api/records',client=browser)[0],200)
+        self.assertEqual(sessions(),1)
     def test_previous_supervisor_database_becomes_analyst(self):
         path=Path(self.tmp.name)/'old.sqlite3'
         with server.connect(path) as db:

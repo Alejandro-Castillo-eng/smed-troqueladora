@@ -11,9 +11,11 @@ correcciones, historial y análisis con exportación a CSV y Excel.
 | Analista | `usuario` | `artefacto` | Nuevo setup con preparación externa, Historial, Análisis y Configuración. |
 | Operario | `operario` | `troqueladora` | Nuevo setup con preparación externa, sin editar la lista de actividades. |
 
-Al entrar se elige primero **Ingresar como analista** o **Ingresar como operario**; después
-aparece el formulario con las credenciales de ese rol a la derecha. El servidor rechaza las
-credenciales de un rol distinto al elegido.
+La pantalla de inicio de sesión es del operario: pide directamente usuario y contraseña,
+con las credenciales del operario a la derecha, y rechaza las del analista. Dentro de la
+aplicación, el operario tiene el botón **Cambiar a analista**, que pide las credenciales del
+analista, cierra la sesión del operario y conserva la medición en curso. Al cerrar sesión se
+vuelve a la pantalla del operario.
 
 Cada rol ve únicamente sus secciones. El servidor también lo exige: el operario solo
 puede leer la configuración y guardar o corregir las mediciones que él registró; el
@@ -44,9 +46,9 @@ Requiere Python 3.10 o posterior. No hay paquetes que instalar.
 python server.py
 ```
 
-Abre http://127.0.0.1:8080. Los accesos de revisión del analista y del operario
-(ver la tabla de roles) se muestran junto al inicio de sesión para facilitar la
-revisión del profesor. La autenticación se valida en el servidor, con contraseña
+Abre http://127.0.0.1:8080. Para facilitar la revisión del profesor, el acceso del
+operario se muestra junto al inicio de sesión y el del analista en el diálogo
+**Cambiar a analista** (ver la tabla de roles). La autenticación se valida en el servidor, con contraseña
 derivada mediante PBKDF2 y sesión en cookie HttpOnly.
 
 ## Preparación externa
@@ -154,7 +156,8 @@ incluidas incidencias, omisiones y correcciones.
 - El operario puede usar `GET /api/config` y `POST /api/records` (solo mediciones nuevas o
   propias, de origen Planta o Demo). El resto de rutas son del analista; el operario recibe 403.
 - `POST /api/auth/setup`, `/api/auth/login`, `/api/auth/logout`: acceso. El inicio de sesión
-  acepta `role` (`analista` u `operario`) y responde 401 si la cuenta es de otro rol.
+  acepta `role` (`analista` u `operario`) y responde 401 si la cuenta es de otro rol. Al
+  iniciar sesión se cierra la sesión anterior del mismo navegador.
 - `GET /api/records`: historial.
 - `POST /api/records`: guardar o corregir una medición. `_version` evita sobrescribir
   cambios de otra sesión; los reintentos del mismo registro no lo duplican.
