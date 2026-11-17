@@ -66,8 +66,10 @@ completan dos tarjetas:
   inspeccionado, láminas en el carrito, herramientas, plantilla y ficha técnica): 10 puntos.
 
 El botón **Kit completo · ver pasos** muestra los pasos siguientes con **Iniciar parada y
-medición**, aunque falten puntos: la medición guarda, por paso, cuáles faltaban. Las marcas, el
-pedido y el cronómetro se conservan al recargar. La medición guarda el kit, el pedido y los minutos
+medición**, aunque falten puntos: la medición guarda, por paso, cuáles faltaban. Al recargar
+la página, la preparación empieza de cero (pedido vacío, cronómetro en 00:00 y kit sin marcar);
+también al escribir otro número de pedido, el cronómetro vuelve a empezar y el kit se desmarca.
+Una parada ya iniciada se conserva al recargar. La medición guarda el kit, el pedido y los minutos
 de preparación externa, y el resultado los muestra.
 
 El operario no ve la lista editable de actividades para no distraerse durante el cambio:

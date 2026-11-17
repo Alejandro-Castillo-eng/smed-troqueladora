@@ -169,10 +169,27 @@ test('el pedido conocido completa sus datos y el cronómetro externo va del pedi
   assert.equal(state.element('#extClock').textContent, '03:00');
   state.clock.now += 60000;
   assert.equal(state.element('#extClock').textContent, '03:00');
+  state.element('#orderInput').value = '249';
+  state.element('#orderInput').onchange();
+  assert.equal(state.run('RUN.extEnd'), state.clock.now - 60000, 'el mismo pedido no reinicia');
   state.element('#orderInput').value = '12345';
   state.element('#orderInput').onchange();
   assert.equal(state.run('RUN.order'), '12345');
   assert.match(state.element('#orderInfo').textContent, /No hay datos registrados para el pedido 12345/);
+  assert.equal(state.run('RUN.extStart'), state.clock.now, 'otro pedido reinicia el cronómetro');
+  assert.equal(state.run('RUN.extEnd'), null);
+  assert.deepEqual(state.run('RUN.kit'), {});
+  assert.equal(state.element('#kitCount').textContent, '0 de 10 listos');
+});
+
+test('al recargar, la preparación empieza de cero y una parada iniciada se conserva', () => {
+  const kit = { 'orden-codigo': true, 'kit-troquel': true };
+  const preparing = new Map([['smedTroq.medicion.v2', JSON.stringify({ phase: 1, data: {}, plan: [{ id: 'A', name: 'A' }], order: 'P-0249', kit, extStart: 1, extEnd: null, stepsShown: true, entries: [], scale: 1 })]]);
+  const reloaded = measurement({ storage: preparing });
+  assert.deepEqual(reloaded.run('[RUN.order, RUN.kit, RUN.extStart, RUN.extEnd, RUN.stepsShown, RUN.plan.length]'), ['', {}, null, null, false, 1]);
+  assert.equal(JSON.parse(preparing.get('smedTroq.medicion.v2')).order, '');
+  const running = new Map([['smedTroq.medicion.v2', JSON.stringify({ phase: 2, data: {}, plan: [{ id: 'A', name: 'A' }], order: 'P-0249', kit, extStart: 1, extEnd: 2, start: 3, entries: [], scale: 1 })]]);
+  assert.deepEqual(measurement({ storage: running }).run('[RUN.order, RUN.kit, RUN.extStart]'), ['P-0249', kit, 1]);
 });
 
 test('hay varios pedidos registrados con todos sus datos', () => {
