@@ -118,41 +118,86 @@ test('la finalización habitual con el botón siguiente sigue guardando una sola
   assert.equal(state.run('RUN.phase'), 1);
 });
 
-test('el kit de materiales se guarda con la medición e indica lo que faltaba', async () => {
-  const state = measurement(); prepare(state);
-  state.run(`RUN.withKit = true; RUN.kit = { 'orden-revision': true, 'kit-troquel': true, 'orden-codigo': true }`);
+const FULL_KIT = `Object.fromEntries(KIT.flatMap(g => g.items.map(([id]) => [id, true])))`;
+function ready(state, user) {
+  state.context.renderRun = () => {};
+  for (const id of ['measurementDate', 'measurementTime']) state.element('#' + id).reportValidity = () => true;
+  if (user) state.run(`backendState = { configured: true, user: ${JSON.stringify(user)} }`);
+}
+
+test('el kit tiene la revisión de la orden (4) y el kit del siguiente pedido (6)', () => {
+  const state = measurement();
+  assert.deepEqual(state.run('KIT.map(g => [g.key, g.step, g.items.length])'), [
+    ['orden', 'Paso 1 · Revisión de la orden (checklist)', 4], ['kit', 'Paso 2 · Kit del siguiente pedido', 6]]);
+  assert.equal(state.run('kitSummary().total'), 10);
+});
+
+test('sin el kit completo no se inicia la parada ni se activa «ver pasos»', () => {
+  const state = measurement(); ready(state);
+  let message;
+  state.context.toast = text => { message = text; };
+  state.run(`RUN.kit = { 'orden-codigo': true }; renderKitCount()`);
+  assert.equal(state.element('#kitDone').disabled, true);
+  assert.equal(state.element('#kitCount').textContent, '1 de 10 listos');
+  state.element('#start').onclick();
+  assert.equal(state.run('RUN.phase'), 1);
+  assert.match(message, /10 de 10/);
+  state.run(`RUN.kit = ${FULL_KIT}; renderKitCount()`);
+  assert.equal(state.element('#kitDone').disabled, false);
+  assert.equal(state.element('#nextSteps').hidden, true);
+  state.element('#kitDone').onclick();
+  assert.equal(state.element('#nextSteps').hidden, false);
+  state.run(`RUN.kit['kit-ficha'] = false; renderKitCount()`);
+  assert.equal(state.element('#nextSteps').hidden, true);
+  assert.equal(state.run('RUN.stepsShown'), false);
+});
+
+test('solo se escribe el número de pedido y el cronómetro externo va del pedido al checklist completo', () => {
+  const state = measurement(); ready(state);
+  state.element('#orderInput').value = ' p-0249 ';
+  state.element('#orderInput').onchange();
+  assert.equal(state.run('RUN.order'), 'P-0249');
+  assert.equal(state.element('#orderInput').value, 'P-0249');
+  assert.equal(state.run('RUN.extStart'), state.clock.now);
+  state.clock.now += 3 * 60000;
+  state.run(`RUN.kit = ${FULL_KIT}; updateExternalClock(); renderKitCount()`);
+  assert.equal(state.run('RUN.extEnd'), state.clock.now);
+  assert.equal(state.element('#extClock').textContent, '03:00');
+  state.clock.now += 60000;
+  assert.equal(state.element('#extClock').textContent, '03:00');
+  state.element('#orderInput').value = '12345';
+  state.element('#orderInput').onchange();
+  assert.equal(state.run('RUN.order'), '12345');
+  assert.equal(state.run('RUN.extStart'), state.clock.now - 4 * 60000);
+});
+
+test('la medición guarda el kit, el pedido y la preparación externa', async () => {
+  const state = measurement(); ready(state, { username: 'usuario', role: 'analista' });
+  state.element('#orderInput').value = 'P-0250';
+  state.element('#orderInput').onchange();
+  state.clock.now += 5 * 60000;
+  state.run(`RUN.kit = ${FULL_KIT}; updateExternalClock()`);
+  state.element('#start').onclick();
+  assert.equal(state.run('RUN.phase'), 2);
+  assert.equal(state.run('RUN.withKit'), true);
+  assert.equal(state.run('RUN.soloTotal'), false);
   let record;
   state.context.saveRecord = async value => { record = copy(value); };
   await state.context.finishEarly();
-  assert.equal(record.kit.listos, 2);
-  assert.equal(record.kit.total, 11);
-  assert.equal(record.kit.faltantes.length, 9);
-  assert(record.kit.faltantes.includes('Anotar los valores de presión, velocidad y registro'));
-  assert.deepEqual(record.kit.grupos.map(g => [g.key, g.listos, g.total]), [['materiales', 1, 6], ['externas', 1, 5]]);
-  assert(record.kit.grupos[0].faltantes.includes('Herramientas de ajuste (llaves y calibrador)'));
+  assert.deepEqual([record.kit.listos, record.kit.total, record.kit.faltantes.length], [10, 10, 0]);
+  assert.deepEqual(record.kit.grupos.map(g => [g.key, g.listos, g.total]), [['orden', 4, 4], ['kit', 6, 6]]);
+  assert.equal(record.external, 5);
+  assert.deepEqual(record.pedido, { numero: 'P-0250' });
   assert.deepEqual(state.run('RUN.kit'), {});
-});
-
-test('iniciar con el kit incompleto no pregunta: inicia y lo registra', () => {
-  const state = measurement();
-  state.context.ask = () => { throw new Error('no debe preguntar'); };
-  state.context.renderRun = () => {};
-  for (const id of ['measurementDate', 'measurementTime']) state.element('#' + id).reportValidity = () => true;
-  state.run(`RUN.kit = { 'orden-revision': true }`);
-  state.element('#start').onclick();
-  assert.equal(state.run('RUN.phase'), 2);
-  assert.equal(state.run('kitSummary().listos'), 1);
+  assert.equal(state.run('RUN.order'), null);
 });
 
 test('el operario solo inicia y termina: una actividad con la parada total', async () => {
-  const state = measurement();
-  state.context.renderRun = () => {};
-  for (const id of ['measurementDate', 'measurementTime']) state.element('#' + id).reportValidity = () => true;
-  state.run(`backendState = { configured: true, user: { username: 'operario', role: 'operario' } };
-    RUN.kit = { 'kit-troquel': true };
-    RUN.plan = [{ id: 'X', name: 'Actividad cambiada por otra persona' }]`);
+  const state = measurement(); ready(state, { username: 'operario', role: 'operario' });
+  state.run(`RUN.kit = ${FULL_KIT}; RUN.plan = [{ id: 'X', name: 'Actividad cambiada por otra persona' }]`);
   state.element('#start').onclick();
   assert.equal(state.run('RUN.phase'), 2);
+  assert.equal(state.run('RUN.withKit'), true);
   assert.deepEqual(state.run('RUN.plan'), [{ id: 'TOTAL', name: 'Cambio de setup completo' }]);
   let record;
   state.context.saveRecord = async value => { record = copy(value); };
@@ -162,30 +207,7 @@ test('el operario solo inicia y termina: una actividad con la parada total', asy
   assert.equal(record.entries.length, 1);
   assert.equal(record.entries[0].minutes, 12.5);
   assert.equal(record.measuredTotal, 12.5);
-  assert.equal(record.kit.listos, 1);
+  assert.equal(record.kit.listos, 10);
+  assert.equal(record.pedido, undefined);
   assert.equal(state.run('RUN.phase'), 1);
-});
-
-test('el analista también usa la preparación externa: su medición guarda el kit', async () => {
-  const state = measurement();
-  state.context.renderRun = () => {};
-  for (const id of ['measurementDate', 'measurementTime']) state.element('#' + id).reportValidity = () => true;
-  state.run(`backendState = { configured: true, user: { username: 'usuario', role: 'analista' } }; RUN.kit = { 'kit-troquel': true }`);
-  state.element('#start').onclick();
-  assert.equal(state.run('RUN.withKit'), true);
-  assert.equal(state.run('RUN.soloTotal'), false);
-  let record;
-  state.context.saveRecord = async value => { record = copy(value); };
-  await state.context.finishEarly();
-  assert.equal(record.kit.listos, 1);
-  assert.equal(record.soloTotal, undefined);
-});
-
-test('el operario sí guarda el kit al iniciar desde su sesión', () => {
-  const state = measurement();
-  state.context.renderRun = () => {};
-  for (const id of ['measurementDate', 'measurementTime']) state.element('#' + id).reportValidity = () => true;
-  state.run(`backendState = { configured: true, user: { username: 'operario', role: 'operario' } }`);
-  state.element('#start').onclick();
-  assert.equal(state.run('RUN.withKit'), true);
 });
